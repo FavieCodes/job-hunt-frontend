@@ -7,13 +7,17 @@ import toast from 'react-hot-toast';
 export default function CheckEmailPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [canResend, setCanResend] = useState(false);
+  const [countdown, setCountdown] = useState(30);
 
   const handleResend = async () => {
-    if (!email) return;
+    if (!email || !canResend) return;
     setLoading(true);
     try {
       await resendConfirmation(email);
       toast.success('Confirmation email resent!');
+      setCanResend(false);
+      setCountdown(30);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to resend email');
     } finally {
@@ -25,6 +29,22 @@ export default function CheckEmailPage() {
     const user = getUser();
     if (user?.email) setEmail(user.email);
   }, []);
+
+  useEffect(() => {
+    if (canResend) return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [canResend]);
 
   return (
     <div className="check-email-page">
@@ -69,9 +89,9 @@ export default function CheckEmailPage() {
             className="btn btn-secondary" 
             style={{ display: 'inline-flex', width: 'auto' }}
             onClick={handleResend}
-            disabled={!email || loading}
+            disabled={!email || loading || !canResend}
           >
-            {loading ? 'Sending...' : 'Resend Email'}
+            {loading ? 'Sending...' : canResend ? 'Resend Email' : `Resend in ${countdown}s`}
           </button>
           <Link href="/login" className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto' }}>
             Go to Login
