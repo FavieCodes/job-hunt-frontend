@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { jobAPI, userAPI } from '@/lib/api';
+import { jobsAPI, userAPI } from '@/lib';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -48,7 +48,7 @@ export default function JobsPage() {
   const fetchJobs = async () => {
     setLoading(true);
     try {
-      const data = await jobAPI.searchJobs(filters);
+      const data = await jobsAPI.searchJobs(filters);
       setJobs(data.jobs || []);
       setTotalPages(data.pages || 1);
       setTotalJobs(data.total || 0);

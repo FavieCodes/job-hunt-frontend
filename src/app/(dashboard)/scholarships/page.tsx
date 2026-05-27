@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { scholarshipAPI } from '@/lib/api';
+import { scholarshipsAPI } from '@/lib';
 import Link from 'next/link';
 
 interface Scholarship {
@@ -32,7 +32,7 @@ export default function ScholarshipsPage() {
   const fetchScholarships = async () => {
     setLoading(true);
     try {
-      const data = await scholarshipAPI.searchScholarships(filters);
+      const data = await scholarshipsAPI.searchScholarships(filters);
       setScholarships(data.scholarships || []);
       setTotalPages(data.pages || 1);
     } catch (error) {
@@ -53,7 +53,7 @@ export default function ScholarshipsPage() {
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       <div className="page-header">
-        <h1><i className="fas fa-graduation-cap"></i> Scholarships & Grants</h1>
+        <h1><i className="fas fa-graduation-cap"></i> Scholarships &amp; Grants</h1>
         <p>Discover funding opportunities worldwide</p>
       </div>
 
