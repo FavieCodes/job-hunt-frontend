@@ -308,6 +308,19 @@ export default function DashboardHomePage() {
         .quick-action-card i {
           font-size: 1.25rem;
         }
+        /* Hide dashboard-specific elements */
+        .search-bar {
+          display: none !important;
+        }
+        .theme-toggle {
+          display: none !important;
+        }
+        .settings-dropdown {
+          display: none !important;
+        }
+        .user-avatar {
+          display: none !important;
+        }
       `}</style>
     </DashboardLayout>
   );
