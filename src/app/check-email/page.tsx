@@ -35,11 +35,13 @@ export default function CheckEmailPage() {
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
-        if (prev <= 1) {
+        const newCount = prev - 1;
+        if (newCount <= 0) {
           setCanResend(true);
+          clearInterval(timer);
           return 0;
         }
-        return prev - 1;
+        return newCount;
       });
     }, 1000);
 
