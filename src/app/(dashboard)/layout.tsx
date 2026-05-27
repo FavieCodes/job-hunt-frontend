@@ -62,7 +62,7 @@ export default function DashboardLayout({
           'Content-Type': 'application/json',
         },
       });
-      
+
       if (response.ok) {
         toast.success('Scraping started! New jobs will appear shortly.');
       } else {
@@ -85,7 +85,6 @@ export default function DashboardLayout({
     { href: '/saved', icon: 'fa-bookmark', label: 'Saved Jobs' },
   ];
 
-  // Add admin menu if user is admin
   if (user.role === 'admin') {
     navItems.push({ href: '/admin/users', icon: 'fa-users', label: 'Users Management' });
   }
@@ -95,13 +94,17 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
+          {/* Logo links to landing page */}
           <Link href="/" className="logo" style={{ textDecoration: 'none' }}>
             <i className="fas fa-briefcase"></i>
             <span>Job<span>Hunt</span></span>
           </Link>
-          <button className="mobile-close" onClick={() => setIsMobileMenuOpen(false)}>
-            <i className="fas fa-times"></i>
-          </button>
+          {/* X button only renders when mobile menu is open */}
+          {isMobileMenuOpen && (
+            <button className="mobile-close" onClick={() => setIsMobileMenuOpen(false)}>
+              <i className="fas fa-times"></i>
+            </button>
+          )}
         </div>
 
         <nav className="sidebar-nav">
@@ -117,11 +120,11 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        {/* Scraper Trigger Button - Only for admin or show to all authenticated users */}
+        {/* Scraper Trigger Button */}
         {(user.role === 'admin' || user.role === 'user') && (
           <div className="scraper-trigger-container">
-            <button 
-              onClick={triggerScraping} 
+            <button
+              onClick={triggerScraping}
               className="scraper-trigger-btn"
               disabled={isScraping}
             >
@@ -142,7 +145,7 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <main className="main-content">
-        {/* Top Bar */}
+        {/* Top Bar — rendered once here, never inside individual pages */}
         <header className="top-bar">
           <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
             <i className="fas fa-bars"></i>
@@ -150,9 +153,9 @@ export default function DashboardLayout({
 
           <div className="search-bar">
             <i className="fas fa-search"></i>
-            <input 
-              type="text" 
-              placeholder="Search jobs or scholarships..." 
+            <input
+              type="text"
+              placeholder="Search jobs or scholarships..."
               id="globalSearch"
               onChange={(e) => {
                 if (pathname === '/jobs') {
@@ -187,7 +190,6 @@ export default function DashboardLayout({
               )}
             </div>
 
-            {/* Profile Picture Link */}
             <Link href="/profile" className="user-avatar">
               <img
                 src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.username}&background=06b6d4&color=fff`}
@@ -202,7 +204,9 @@ export default function DashboardLayout({
       </main>
 
       {/* Overlay for mobile */}
-      {isMobileMenuOpen && <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>}
+      {isMobileMenuOpen && (
+        <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>
+      )}
     </div>
   );
 }

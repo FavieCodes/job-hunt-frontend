@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { getUser } from '@/lib/auth';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import api from '@/lib/api';
 import Link from 'next/link';
 
@@ -11,7 +10,7 @@ export default function DashboardHomePage() {
     totalJobs: 0,
     totalScholarships: 0,
     applications: 0,
-    savedJobs: 0
+    savedJobs: 0,
   });
   const [recentJobs, setRecentJobs] = useState([]);
 
@@ -28,14 +27,14 @@ export default function DashboardHomePage() {
         api.get('/jobs?page=1&limit=1'),
         api.get('/scholarships?page=1&limit=1'),
         api.get('/user/applications'),
-        api.get('/user/saved')
+        api.get('/user/saved'),
       ]);
-      
+
       setStats({
         totalJobs: jobsRes.data.total || 0,
         totalScholarships: scholarshipsRes.data.total || 0,
         applications: applicationsRes.data.length || 0,
-        savedJobs: savedRes.data.length || 0
+        savedJobs: savedRes.data.length || 0,
       });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -54,115 +53,118 @@ export default function DashboardHomePage() {
   if (!user) return null;
 
   return (
-    <DashboardLayout user={user}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-        {/* Welcome Banner */}
-        <div className="welcome-section">
-          <div>
-            <h1 className="welcome-title">
-              Welcome back, {user.username}! 👋
-            </h1>
-            <p className="welcome-subtitle">
-              Here's what's happening with your job search today
-            </p>
+    <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      {/* Welcome Banner */}
+      <div className="welcome-section">
+        <div>
+          <h1 className="welcome-title">Welcome back, {user.username}! 👋</h1>
+          <p className="welcome-subtitle">
+            Here's what's happening with your job search today
+          </p>
+        </div>
+        <div className="stats-badge">
+          <span className="stat-badge">
+            <i className="fas fa-briefcase"></i> {stats.totalJobs}+ Jobs
+          </span>
+          <span className="stat-badge">
+            <i className="fas fa-graduation-cap"></i> {stats.totalScholarships}+ Scholarships
+          </span>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="dashboard-stats">
+        <div className="stat-card">
+          <div className="stat-icon blue">
+            <i className="fas fa-briefcase"></i>
           </div>
-          <div className="stats-badge">
-            <span className="stat-badge">
-              <i className="fas fa-briefcase"></i> {stats.totalJobs}+ Jobs
-            </span>
-            <span className="stat-badge">
-              <i className="fas fa-graduation-cap"></i> {stats.totalScholarships}+ Scholarships
-            </span>
+          <div className="stat-info">
+            <h3>{stats.totalJobs}+</h3>
+            <p>Total Jobs</p>
           </div>
         </div>
-
-        {/* Stats Cards */}
-        <div className="dashboard-stats">
-          <div className="stat-card">
-            <div className="stat-icon blue">
-              <i className="fas fa-briefcase"></i>
-            </div>
-            <div className="stat-info">
-              <h3>{stats.totalJobs}+</h3>
-              <p>Total Jobs</p>
-            </div>
+        <div className="stat-card">
+          <div className="stat-icon cyan">
+            <i className="fas fa-graduation-cap"></i>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon cyan">
-              <i className="fas fa-graduation-cap"></i>
-            </div>
-            <div className="stat-info">
-              <h3>{stats.totalScholarships}+</h3>
-              <p>Scholarships</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon green">
-              <i className="fas fa-file-alt"></i>
-            </div>
-            <div className="stat-info">
-              <h3>{stats.applications}</h3>
-              <p>Applications Sent</p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon purple">
-              <i className="fas fa-bookmark"></i>
-            </div>
-            <div className="stat-info">
-              <h3>{stats.savedJobs}</h3>
-              <p>Saved Jobs</p>
-            </div>
+          <div className="stat-info">
+            <h3>{stats.totalScholarships}+</h3>
+            <p>Scholarships</p>
           </div>
         </div>
-
-        {/* Recent Jobs */}
-        <div className="recent-section">
-          <div className="section-header">
-            <h2><i className="fas fa-clock"></i> Recently Added Jobs</h2>
-            <Link href="/jobs" className="view-all">View All →</Link>
+        <div className="stat-card">
+          <div className="stat-icon green">
+            <i className="fas fa-file-alt"></i>
           </div>
-          <div className="recent-jobs-list">
-            {recentJobs.map((job: any) => (
-              <Link href={`/jobs/${job.id}`} key={job.id} className="recent-job-item">
-                <div className="recent-job-icon">
-                  {job.company?.[0] || 'J'}
-                </div>
-                <div className="recent-job-info">
-                  <h4>{job.title}</h4>
-                  <p>{job.company || 'Remote Company'} • {job.city || job.country || 'Remote'}</p>
-                </div>
-                <div className="recent-job-type">
-                  <span className="job-type-badge">{job.job_type || 'Full-time'}</span>
-                </div>
-              </Link>
-            ))}
+          <div className="stat-info">
+            <h3>{stats.applications}</h3>
+            <p>Applications Sent</p>
           </div>
         </div>
+        <div className="stat-card">
+          <div className="stat-icon purple">
+            <i className="fas fa-bookmark"></i>
+          </div>
+          <div className="stat-info">
+            <h3>{stats.savedJobs}</h3>
+            <p>Saved Jobs</p>
+          </div>
+        </div>
+      </div>
 
-        {/* Quick Actions */}
-        <div className="quick-actions-section">
-          <div className="section-header">
-            <h2><i className="fas fa-bolt"></i> Quick Actions</h2>
-          </div>
-          <div className="quick-actions-grid">
-            <Link href="/jobs" className="quick-action-card">
-              <i className="fas fa-search"></i>
-              <span>Browse Jobs</span>
+      {/* Recent Jobs */}
+      <div className="recent-section">
+        <div className="section-header">
+          <h2>
+            <i className="fas fa-clock"></i> Recently Added Jobs
+          </h2>
+          <Link href="/jobs" className="view-all">
+            View All →
+          </Link>
+        </div>
+        <div className="recent-jobs-list">
+          {recentJobs.map((job: any) => (
+            <Link href={`/jobs/${job.id}`} key={job.id} className="recent-job-item">
+              <div className="recent-job-icon">{job.company?.[0] || 'J'}</div>
+              <div className="recent-job-info">
+                <h4>{job.title}</h4>
+                <p>
+                  {job.company || 'Remote Company'} •{' '}
+                  {job.city || job.country || 'Remote'}
+                </p>
+              </div>
+              <div className="recent-job-type">
+                <span className="job-type-badge">{job.job_type || 'Full-time'}</span>
+              </div>
             </Link>
-            <Link href="/scholarships" className="quick-action-card">
-              <i className="fas fa-graduation-cap"></i>
-              <span>Find Scholarships</span>
-            </Link>
-            <Link href="/applications" className="quick-action-card">
-              <i className="fas fa-file-alt"></i>
-              <span>Track Applications</span>
-            </Link>
-            <Link href="/profile" className="quick-action-card">
-              <i className="fas fa-user"></i>
-              <span>Update Profile</span>
-            </Link>
-          </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="quick-actions-section">
+        <div className="section-header">
+          <h2>
+            <i className="fas fa-bolt"></i> Quick Actions
+          </h2>
+        </div>
+        <div className="quick-actions-grid">
+          <Link href="/jobs" className="quick-action-card">
+            <i className="fas fa-search"></i>
+            <span>Browse Jobs</span>
+          </Link>
+          <Link href="/scholarships" className="quick-action-card">
+            <i className="fas fa-graduation-cap"></i>
+            <span>Find Scholarships</span>
+          </Link>
+          <Link href="/applications" className="quick-action-card">
+            <i className="fas fa-file-alt"></i>
+            <span>Track Applications</span>
+          </Link>
+          <Link href="/profile" className="quick-action-card">
+            <i className="fas fa-user"></i>
+            <span>Update Profile</span>
+          </Link>
         </div>
       </div>
 
@@ -209,7 +211,8 @@ export default function DashboardHomePage() {
           color: var(--color-text-muted);
           font-size: 0.875rem;
         }
-        .recent-section, .quick-actions-section {
+        .recent-section,
+        .quick-actions-section {
           background: var(--color-surface);
           border: 1px solid var(--color-border);
           border-radius: 1rem;
@@ -308,20 +311,7 @@ export default function DashboardHomePage() {
         .quick-action-card i {
           font-size: 1.25rem;
         }
-        /* Hide dashboard-specific elements */
-        .search-bar {
-          display: none !important;
-        }
-        .theme-toggle {
-          display: none !important;
-        }
-        .settings-dropdown {
-          display: none !important;
-        }
-        .user-avatar {
-          display: none !important;
-        }
       `}</style>
-    </DashboardLayout>
+    </div>
   );
 }

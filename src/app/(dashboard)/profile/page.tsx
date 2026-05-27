@@ -1,7 +1,6 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
-import { getUser, getMe, changePassword } from '@/lib/auth';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+import { useEffect, useState, useRef } from 'react';
+import { getUser, changePassword } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 
@@ -13,7 +12,7 @@ export default function ProfilePage() {
     email: '',
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [avatar, setAvatar] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -23,11 +22,11 @@ export default function ProfilePage() {
     const userData = getUser();
     if (userData) {
       setUser(userData);
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         username: userData.username,
-        email: userData.email
-      });
+        email: userData.email,
+      }));
     }
     fetchProfile();
   }, []);
@@ -49,25 +48,17 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
     }
-
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast.error('Image must be less than 2MB');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('avatar', file);
     setUploading(true);
-
     try {
-      // In production, you'd upload to a service like Cloudinary
-      // For now, convert to base64 and save
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
@@ -85,16 +76,13 @@ export default function ProfilePage() {
 
   const handleUpdateProfile = async () => {
     try {
-      const { data } = await api.patch('/user/profile', {
-        username: formData.username
-      });
-      // Update local user data
+      await api.patch('/user/profile', { username: formData.username });
       const userData = getUser();
       if (userData) {
         userData.username = formData.username;
         localStorage.setItem('user', JSON.stringify(userData));
       }
-      setUser({ ...user, username: formData.username });
+      setUser((prev: any) => ({ ...prev, username: formData.username }));
       toast.success('Profile updated successfully');
       setIsEditing(false);
     } catch (error: any) {
@@ -117,14 +105,18 @@ export default function ProfilePage() {
     }
 
     try {
-      await changePassword(formData.currentPassword, formData.newPassword, formData.confirmPassword);
+      await changePassword(
+        formData.currentPassword,
+        formData.newPassword,
+        formData.confirmPassword
+      );
       toast.success('Password changed successfully');
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         currentPassword: '',
         newPassword: '',
-        confirmPassword: ''
-      });
+        confirmPassword: '',
+      }));
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to change password');
     }
@@ -133,130 +125,143 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <DashboardLayout user={user}>
-      <div className="profile-container">
-        <div className="profile-header">
-          <h1><i className="fas fa-user-circle"></i> My Profile</h1>
-          <p>Manage your account settings and preferences</p>
+    <div className="profile-container">
+      <div className="profile-header">
+        <h1>
+          <i className="fas fa-user-circle"></i> My Profile
+        </h1>
+        <p>Manage your account settings and preferences</p>
+      </div>
+
+      <div className="profile-grid">
+        {/* Avatar Section */}
+        <div className="profile-card">
+          <h3>Profile Picture</h3>
+          <div className="avatar-section">
+            <div
+              className="avatar-wrapper"
+              onClick={handleAvatarClick}
+              style={{ cursor: 'pointer' }}
+            >
+              <img
+                src={
+                  avatar ||
+                  `https://ui-avatars.com/api/?name=${user.username}&background=06b6d4&color=fff&size=120`
+                }
+                alt={user.username}
+                className="profile-avatar"
+              />
+              <div className="avatar-overlay">
+                <i className="fas fa-camera"></i>
+                <span>Change Photo</span>
+              </div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              style={{ display: 'none' }}
+            />
+            {uploading && <p className="uploading-text">Uploading...</p>}
+            <p className="avatar-hint">Click on the image to change your profile picture</p>
+          </div>
         </div>
 
-        <div className="profile-grid">
-          {/* Avatar Section - Clickable */}
-          <div className="profile-card">
-            <h3>Profile Picture</h3>
-            <div className="avatar-section">
-              <div 
-                className="avatar-wrapper"
-                onClick={handleAvatarClick}
-                style={{ cursor: 'pointer' }}
-              >
-                <img
-                  src={avatar || `https://ui-avatars.com/api/?name=${user.username}&background=06b6d4&color=fff&size=120`}
-                  alt={user.username}
-                  className="profile-avatar"
-                />
-                <div className="avatar-overlay">
-                  <i className="fas fa-camera"></i>
-                  <span>Change Photo</span>
-                </div>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                style={{ display: 'none' }}
-              />
-              {uploading && <p className="uploading-text">Uploading...</p>}
-              <p className="avatar-hint">Click on the image to change your profile picture</p>
-            </div>
+        {/* Profile Information */}
+        <div className="profile-card">
+          <div className="card-header">
+            <h3>Personal Information</h3>
+            <button onClick={() => setIsEditing(!isEditing)} className="edit-btn">
+              <i className={`fas ${isEditing ? 'fa-times' : 'fa-pen'}`}></i>
+              {isEditing ? 'Cancel' : 'Edit'}
+            </button>
           </div>
 
-          {/* Profile Information */}
-          <div className="profile-card">
-            <div className="card-header">
-              <h3>Personal Information</h3>
-              <button onClick={() => setIsEditing(!isEditing)} className="edit-btn">
-                <i className={`fas ${isEditing ? 'fa-times' : 'fa-pen'}`}></i>
-                {isEditing ? 'Cancel' : 'Edit'}
-              </button>
-            </div>
-
-            <div className="profile-info">
-              <div className="info-field">
-                <label>Username</label>
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  />
-                ) : (
-                  <p>{user.username}</p>
-                )}
-              </div>
-
-              <div className="info-field">
-                <label>Email Address</label>
-                <p>{user.email}</p>
-              </div>
-
-              <div className="info-field">
-                <label>Account Type</label>
-                <p className="role-badge">{user.role === 'admin' ? 'Administrator' : 'Regular User'}</p>
-              </div>
-
-              <div className="info-field">
-                <label>Member Since</label>
-                <p>{new Date(user.created_at).toLocaleDateString()}</p>
-              </div>
-
-              {isEditing && (
-                <button onClick={handleUpdateProfile} className="save-profile-btn">
-                  Save Changes
-                </button>
+          <div className="profile-info">
+            <div className="info-field">
+              <label>Username</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value })
+                  }
+                />
+              ) : (
+                <p>{user.username}</p>
               )}
             </div>
-          </div>
 
-          {/* Change Password */}
-          <div className="profile-card">
-            <h3>Change Password</h3>
-            <div className="password-form">
-              <div className="form-field">
-                <label>Current Password</label>
-                <input
-                  type="password"
-                  value={formData.currentPassword}
-                  onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
-                  placeholder="Enter current password"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>New Password</label>
-                <input
-                  type="password"
-                  value={formData.newPassword}
-                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                  placeholder="Min. 8 characters"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Confirm New Password</label>
-                <input
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  placeholder="Confirm your new password"
-                />
-              </div>
-
-              <button onClick={handleChangePassword} className="change-password-btn">
-                Update Password
-              </button>
+            <div className="info-field">
+              <label>Email Address</label>
+              <p>{user.email}</p>
             </div>
+
+            <div className="info-field">
+              <label>Account Type</label>
+              <p className="role-badge">
+                {user.role === 'admin' ? 'Administrator' : 'Regular User'}
+              </p>
+            </div>
+
+            <div className="info-field">
+              <label>Member Since</label>
+              <p>{new Date(user.created_at).toLocaleDateString()}</p>
+            </div>
+
+            {isEditing && (
+              <button onClick={handleUpdateProfile} className="save-profile-btn">
+                Save Changes
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Change Password */}
+        <div className="profile-card">
+          <h3>Change Password</h3>
+          <div className="password-form">
+            <div className="form-field">
+              <label>Current Password</label>
+              <input
+                type="password"
+                value={formData.currentPassword}
+                onChange={(e) =>
+                  setFormData({ ...formData, currentPassword: e.target.value })
+                }
+                placeholder="Enter current password"
+              />
+            </div>
+
+            <div className="form-field">
+              <label>New Password</label>
+              <input
+                type="password"
+                value={formData.newPassword}
+                onChange={(e) =>
+                  setFormData({ ...formData, newPassword: e.target.value })
+                }
+                placeholder="Min. 8 characters"
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Confirm New Password</label>
+              <input
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) =>
+                  setFormData({ ...formData, confirmPassword: e.target.value })
+                }
+                placeholder="Confirm your new password"
+              />
+            </div>
+
+            <button onClick={handleChangePassword} className="change-password-btn">
+              Update Password
+            </button>
           </div>
         </div>
       </div>
@@ -273,7 +278,7 @@ export default function ProfilePage() {
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0,0,0,0.6);
+          background: rgba(0, 0, 0, 0.6);
           border-radius: 50%;
           display: flex;
           flex-direction: column;
@@ -313,6 +318,6 @@ export default function ProfilePage() {
           font-weight: 500;
         }
       `}</style>
-    </DashboardLayout>
+    </div>
   );
 }
