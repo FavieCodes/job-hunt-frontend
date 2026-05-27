@@ -34,19 +34,17 @@ export default function CheckEmailPage() {
     if (canResend) return;
 
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        const newCount = prev - 1;
-        if (newCount <= 0) {
-          setCanResend(true);
-          clearInterval(timer);
-          return 0;
-        }
-        return newCount;
-      });
+      setCountdown((prev) => prev - 1);
     }, 1000);
 
     return () => clearInterval(timer);
   }, [canResend]);
+
+  useEffect(() => {
+    if (countdown <= 0 && !canResend) {
+      setCanResend(true);
+    }
+  }, [countdown, canResend]);
 
   return (
     <div className="check-email-page">
