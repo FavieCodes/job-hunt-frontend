@@ -10,42 +10,66 @@ const PUBLIC_PATHS = [
   '/check-email',
 ];
 
+const PROTECTED_ROUTES = [
+  '/dashboard',
+  '/jobs',
+  '/scholarships',
+  '/applications',
+  '/saved',
+  '/profile',
+  '/admin',
+];
+
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
   const userCookie = request.cookies.get('user')?.value;
-  let isConfirmed = true;
+  const { pathname } = request.nextUrl;
 
+  let isConfirmed = true;
   if (userCookie) {
     try {
       const user = JSON.parse(userCookie);
       isConfirmed = user.is_confirmed !== false;
-    } catch (e) {}
+    } catch (e) {
+      isConfirmed = false;
+    }
   }
 
-  const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isPublicPath = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isProtectedRoute = PROTECTED_ROUTES.some(route => 
+    pathname === route || pathname.startsWith(`${route}/`)
+  );
+  const bypassConfirmationRedirect = 
+    pathname.startsWith('/confirm') || 
+    pathname.startsWith('/check-email');
 
-  // Unauthenticated user hitting a protected route → login
-  if (!token && !isPublic) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  if (!token && isProtectedRoute) {
+    const url = new URL('/', request.url);
+    return NextResponse.redirect(url);
   }
 
-  const bypassRedirect =
-    pathname.startsWith('/confirm') || pathname.startsWith('/check-email');
+  if (!token && !isPublicPath && !isProtectedRoute && pathname !== '/') {
+    const url = new URL('/', request.url);
+    return NextResponse.redirect(url);
+  }
 
-  // Logged-in but unconfirmed → check-email 
-  if (token && !isConfirmed && !bypassRedirect) {
+  if (token && !isConfirmed && !bypassConfirmationRedirect) {
     return NextResponse.redirect(new URL('/check-email', request.url));
   }
 
-  // Logged-in confirmed user hitting a public/auth page → dashboard
-  if (token && isPublic && !bypassRedirect) {
-    return NextResponse.redirect(new URL('/jobs', request.url));
+  if (token && isConfirmed && pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  if (token && isConfirmed && isPublicPath && !bypassConfirmationRedirect) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|public|api|.*\\..*).*)',
+  ],
 };
