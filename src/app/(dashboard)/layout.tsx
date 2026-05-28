@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { getUser, logout } from '@/lib/auth';
+import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
+import api from '@/lib/api';
 
 export default function DashboardLayout({
   children,
@@ -51,25 +53,15 @@ export default function DashboardLayout({
     router.push('/');
   };
 
+  // Use the shared api instance which reads the token from cookies automatically
   const triggerScraping = async () => {
     setIsScraping(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/scraper/trigger`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        toast.success('Scraping started! New jobs will appear shortly.');
-      } else {
-        toast.error('Failed to start scraping. Please try again.');
-      }
-    } catch (error) {
-      toast.error('Error triggering scraper');
+      await api.post('/scraper/trigger');
+      toast.success('Scraping started! New jobs will appear shortly.');
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Failed to start scraping. Please try again.';
+      toast.error(msg);
     } finally {
       setIsScraping(false);
     }
@@ -77,29 +69,34 @@ export default function DashboardLayout({
 
   if (!user) return null;
 
-  const navItems = [
-    { href: '/dashboard', icon: 'fa-home', label: 'Dashboard' },
-    { href: '/jobs', icon: 'fa-briefcase', label: 'Jobs' },
-    { href: '/scholarships', icon: 'fa-graduation-cap', label: 'Scholarships' },
-    { href: '/applications', icon: 'fa-file-alt', label: 'My Applications' },
-    { href: '/saved', icon: 'fa-bookmark', label: 'Saved Jobs' },
-  ];
+  const isAdmin = user.role === 'admin';
 
-  if (user.role === 'admin') {
-    navItems.push({ href: '/admin/users', icon: 'fa-users', label: 'Users Management' });
-  }
+  // Admin nav: no "My Applications" or "Saved Jobs"
+  // User nav: full set
+  const navItems = isAdmin
+    ? [
+        { href: '/dashboard',     icon: 'fa-home',          label: 'Dashboard' },
+        { href: '/jobs',          icon: 'fa-briefcase',     label: 'Jobs' },
+        { href: '/scholarships',  icon: 'fa-graduation-cap', label: 'Scholarships' },
+        { href: '/admin/users',   icon: 'fa-users',         label: 'Users Management' },
+      ]
+    : [
+        { href: '/dashboard',     icon: 'fa-home',          label: 'Dashboard' },
+        { href: '/jobs',          icon: 'fa-briefcase',     label: 'Jobs' },
+        { href: '/scholarships',  icon: 'fa-graduation-cap', label: 'Scholarships' },
+        { href: '/applications',  icon: 'fa-file-alt',      label: 'My Applications' },
+        { href: '/saved',         icon: 'fa-bookmark',      label: 'Saved Jobs' },
+      ];
 
   return (
     <div className={`dashboard-container ${isDarkMode ? 'dark' : ''}`}>
       {/* Sidebar */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
-          {/* Logo links to landing page */}
           <Link href="/" className="logo" style={{ textDecoration: 'none' }}>
             <i className="fas fa-briefcase"></i>
             <span>Job<span>Hunt</span></span>
           </Link>
-          {/* X button only renders when mobile menu is open */}
           {isMobileMenuOpen && (
             <button className="mobile-close" onClick={() => setIsMobileMenuOpen(false)}>
               <i className="fas fa-times"></i>
@@ -120,8 +117,8 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        {/* Scraper Trigger Button */}
-        {(user.role === 'admin' || user.role === 'user') && (
+        {/* Force-scrape button: admin only */}
+        {isAdmin && (
           <div className="scraper-trigger-container">
             <button
               onClick={triggerScraping}
@@ -145,7 +142,6 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <main className="main-content">
-        {/* Top Bar — rendered once here, never inside individual pages */}
         <header className="top-bar">
           <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
             <i className="fas fa-bars"></i>
@@ -192,18 +188,16 @@ export default function DashboardLayout({
 
             <Link href="/profile" className="user-avatar">
               <img
-                src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.username}&background=06b6d4&color=fff`}
+                src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=06b6d4&color=fff`}
                 alt={user?.username}
               />
             </Link>
           </div>
         </header>
 
-        {/* Page Content */}
         <div className="page-content">{children}</div>
       </main>
 
-      {/* Overlay for mobile */}
       {isMobileMenuOpen && (
         <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>
       )}
