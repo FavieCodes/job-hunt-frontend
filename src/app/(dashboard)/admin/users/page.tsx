@@ -1,348 +1,341 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { getUser } from '@/lib/auth';
 import api from '@/lib/api';
-import toast from 'react-hot-toast';
+import Link from 'next/link';
 
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  role: string;
-  is_confirmed: boolean;
-  created_at: string;
-  avatar: string;
-}
-
-export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showRoleModal, setShowRoleModal] = useState(false);
+export default function DashboardHomePage() {
+  const [user, setUser] = useState<any>(null);
+  const [stats, setStats] = useState({
+    totalJobs: 0,
+    totalScholarships: 0,
+    applications: 0,
+    savedJobs: 0,
+    totalUsers: 0,
+    totalApplications: 0,
+  });
+  const [recentJobs, setRecentJobs] = useState([]);
 
   useEffect(() => {
-    fetchUsers();
+    const userData = getUser();
+    setUser(userData);
+    fetchStats(userData);
+    fetchRecentJobs();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchStats = async (userData: any) => {
+    const isAdmin = userData?.role === 'admin';
     try {
-      const { data } = await api.get('/admin/users');
-      setUsers(data);
-    } catch (error) {
-      toast.error('Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateUserRole = async (userId: string, newRole: string) => {
-    try {
-      await api.patch(`/admin/users/${userId}/role`, { role: newRole });
-      toast.success('User role updated successfully');
-      fetchUsers();
-      setShowRoleModal(false);
-    } catch (error) {
-      toast.error('Failed to update user role');
-    }
-  };
-
-  const deleteUser = async (userId: string) => {
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      try {
-        await api.delete(`/admin/users/${userId}`);
-        toast.success('User deleted successfully');
-        fetchUsers();
-      } catch (error) {
-        toast.error('Failed to delete user');
+      if (isAdmin) {
+        // Admin: fetch platform-wide numbers
+        const [jobsRes, scholarshipsRes, usersRes] = await Promise.all([
+          api.get('/jobs?page=1&limit=1'),
+          api.get('/scholarships?page=1&limit=1'),
+          api.get('/admin/users'),
+        ]);
+        setStats({
+          totalJobs: jobsRes.data.total || 0,
+          totalScholarships: scholarshipsRes.data.total || 0,
+          applications: 0,
+          savedJobs: 0,
+          totalUsers: usersRes.data.length || 0,
+          totalApplications: 0,
+        });
+      } else {
+        // Regular user: fetch personal numbers
+        const [jobsRes, scholarshipsRes, applicationsRes, savedRes] = await Promise.all([
+          api.get('/jobs?page=1&limit=1'),
+          api.get('/scholarships?page=1&limit=1'),
+          api.get('/user/applications'),
+          api.get('/user/saved'),
+        ]);
+        setStats({
+          totalJobs: jobsRes.data.total || 0,
+          totalScholarships: scholarshipsRes.data.total || 0,
+          applications: applicationsRes.data.length || 0,
+          savedJobs: savedRes.data.length || 0,
+          totalUsers: 0,
+          totalApplications: 0,
+        });
       }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getRoleBadgeColor = (role: string) => {
-    return role === 'admin' ? '#ef4444' : '#10b981';
+  const fetchRecentJobs = async () => {
+    try {
+      const { data } = await api.get('/jobs?page=1&limit=5');
+      setRecentJobs(data.jobs || []);
+    } catch (error) {
+      console.error('Failed to fetch recent jobs:', error);
+    }
   };
+
+  if (!user) return null;
+
+  const isAdmin = user.role === 'admin';
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-      <div className="profile-header">
-        <h1><i className="fas fa-users"></i> Users Management</h1>
-        <p>Manage all registered users on the platform</p>
-      </div>
-
-      {/* Search Bar */}
-      <div className="admin-search-bar">
-        <i className="fas fa-search"></i>
-        <input
-          type="text"
-          placeholder="Search by username or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <span className="user-count">{filteredUsers.length} users found</span>
-      </div>
-
-      {/* Users Table */}
-      {loading ? (
-        <div className="skeleton-card">Loading users...</div>
-      ) : (
-        <div className="users-table-container">
-          <table className="users-table">
-            <thead>
-              <tr>
-                <th>Avatar</th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Joined</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td>
-                    <img
-                      src={user.avatar || `https://ui-avatars.com/api/?name=${user.username}&background=06b6d4&color=fff`}
-                      alt={user.username}
-                      className="user-avatar-table"
-                    />
-                  </td>
-                  <td><strong>{user.username}</strong></td>
-                  <td>{user.email}</td>
-                  <td>
-                    <span className="role-badge" style={{ backgroundColor: getRoleBadgeColor(user.role) }}>
-                      {user.role}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${user.is_confirmed ? 'confirmed' : 'unconfirmed'}`}>
-                      {user.is_confirmed ? '✅ Confirmed' : '⏳ Pending'}
-                    </span>
-                  </td>
-                  <td>{new Date(user.created_at).toLocaleDateString()}</td>
-                  <td>
-                    <div className="user-actions">
-                      <button
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowRoleModal(true);
-                        }}
-                        className="action-btn edit"
-                        title="Change Role"
-                      >
-                        <i className="fas fa-user-tag"></i>
-                      </button>
-                      <button
-                        onClick={() => deleteUser(user.id)}
-                        className="action-btn delete"
-                        title="Delete User"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Welcome Banner */}
+      <div className="welcome-section">
+        <div>
+          <h1 className="welcome-title">
+            {isAdmin ? `Admin Dashboard 🛡️` : `Welcome back, ${user.username}! 👋`}
+          </h1>
+          <p className="welcome-subtitle">
+            {isAdmin
+              ? 'Manage jobs, scholarships, and users across the platform'
+              : "Here's what's happening with your job search today"}
+          </p>
         </div>
-      )}
+        <div className="stats-badge">
+          <span className="stat-badge">
+            <i className="fas fa-briefcase"></i> {stats.totalJobs}+ Jobs
+          </span>
+          <span className="stat-badge">
+            <i className="fas fa-graduation-cap"></i> {stats.totalScholarships}+ Scholarships
+          </span>
+        </div>
+      </div>
 
-      {/* Role Change Modal */}
-      {showRoleModal && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowRoleModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Change User Role</h3>
-              <button onClick={() => setShowRoleModal(false)} className="modal-close">
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div className="modal-body">
-              <p>User: <strong>{selectedUser.username}</strong></p>
-              <p>Email: {selectedUser.email}</p>
-              <div className="role-options">
-                <button
-                  onClick={() => updateUserRole(selectedUser.id, 'user')}
-                  className={`role-option ${selectedUser.role === 'user' ? 'active' : ''}`}
-                >
-                  <i className="fas fa-user"></i> Regular User
-                </button>
-                <button
-                  onClick={() => updateUserRole(selectedUser.id, 'admin')}
-                  className={`role-option admin ${selectedUser.role === 'admin' ? 'active' : ''}`}
-                >
-                  <i className="fas fa-shield-alt"></i> Administrator
-                </button>
-              </div>
-            </div>
+      {/* Stats Cards — different for admin vs user */}
+      <div className="dashboard-stats">
+        <div className="stat-card">
+          <div className="stat-icon blue">
+            <i className="fas fa-briefcase"></i>
+          </div>
+          <div className="stat-info">
+            <h3>{stats.totalJobs}+</h3>
+            <p>Total Jobs</p>
           </div>
         </div>
-      )}
+
+        <div className="stat-card">
+          <div className="stat-icon cyan">
+            <i className="fas fa-graduation-cap"></i>
+          </div>
+          <div className="stat-info">
+            <h3>{stats.totalScholarships}+</h3>
+            <p>Scholarships</p>
+          </div>
+        </div>
+
+        {isAdmin ? (
+          <>
+            <div className="stat-card">
+              <div className="stat-icon green">
+                <i className="fas fa-users"></i>
+              </div>
+              <div className="stat-info">
+                <h3>{stats.totalUsers}</h3>
+                <p>Registered Users</p>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon purple">
+                <i className="fas fa-cogs"></i>
+              </div>
+              <div className="stat-info">
+                <h3>Admin</h3>
+                <p>Full Access</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="stat-card">
+              <div className="stat-icon green">
+                <i className="fas fa-file-alt"></i>
+              </div>
+              <div className="stat-info">
+                <h3>{stats.applications}</h3>
+                <p>Applications Sent</p>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon purple">
+                <i className="fas fa-bookmark"></i>
+              </div>
+              <div className="stat-info">
+                <h3>{stats.savedJobs}</h3>
+                <p>Saved Jobs</p>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Recent Jobs */}
+      <div className="recent-section">
+        <div className="section-header">
+          <h2>
+            <i className="fas fa-clock"></i> Recently Added Jobs
+          </h2>
+          <Link href="/jobs" className="view-all">
+            View All →
+          </Link>
+        </div>
+        <div className="recent-jobs-list">
+          {recentJobs.map((job: any) => (
+            <div key={job.id} className="recent-job-item">
+              <div className="recent-job-icon">{job.company?.[0] || 'J'}</div>
+              <div className="recent-job-info">
+                <h4>{job.title}</h4>
+                <p>
+                  {job.company || 'Remote Company'} •{' '}
+                  {job.city || job.country || 'Remote'}
+                </p>
+              </div>
+              <div className="recent-job-type">
+                <span className="job-type-badge">{job.job_type || 'Full-time'}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions — role-specific */}
+      <div className="quick-actions-section">
+        <div className="section-header">
+          <h2>
+            <i className="fas fa-bolt"></i> Quick Actions
+          </h2>
+        </div>
+        <div className="quick-actions-grid">
+          <Link href="/jobs" className="quick-action-card">
+            <i className="fas fa-search"></i>
+            <span>Browse Jobs</span>
+          </Link>
+          <Link href="/scholarships" className="quick-action-card">
+            <i className="fas fa-graduation-cap"></i>
+            <span>Find Scholarships</span>
+          </Link>
+          {isAdmin ? (
+            <>
+              <Link href="/admin/users" className="quick-action-card">
+                <i className="fas fa-users"></i>
+                <span>Manage Users</span>
+              </Link>
+              <Link href="/admin/jobs" className="quick-action-card">
+                <i className="fas fa-plus-circle"></i>
+                <span>Add Jobs</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/applications" className="quick-action-card">
+                <i className="fas fa-file-alt"></i>
+                <span>Track Applications</span>
+              </Link>
+              <Link href="/interview" className="quick-action-card">
+                <i className="fas fa-comments"></i>
+                <span>Interview Prep</span>
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
 
       <style jsx>{`
-        .admin-search-bar {
+        .dashboard-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+        .stat-card {
           background: var(--color-surface);
           border: 1px solid var(--color-border);
-          border-radius: 0.75rem;
-          padding: 1rem;
+          border-radius: 1rem;
+          padding: 1.5rem;
           display: flex;
           align-items: center;
           gap: 1rem;
-          margin-bottom: 2rem;
+          transition: transform 0.2s;
         }
-        .admin-search-bar i {
-          color: var(--color-text-muted);
-        }
-        .admin-search-bar input {
-          flex: 1;
-          background: none;
-          border: none;
-          outline: none;
-          color: var(--color-text);
-          font-size: 1rem;
-        }
-        .user-count {
-          color: var(--color-text-muted);
-          font-size: 0.875rem;
-        }
-        .users-table-container {
-          background: var(--color-surface);
-          border-radius: 1rem;
-          overflow-x: auto;
-          border: 1px solid var(--color-border);
-        }
-        .users-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-        .users-table th {
-          text-align: left;
-          padding: 1rem;
-          background: var(--color-surface-2);
-          color: var(--color-text);
-          font-weight: 600;
-        }
-        .users-table td {
-          padding: 1rem;
-          border-bottom: 1px solid var(--color-border);
-          color: var(--color-text);
-        }
-        .user-avatar-table {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          object-fit: cover;
-        }
-        .role-badge {
-          display: inline-block;
-          padding: 0.25rem 0.75rem;
-          border-radius: 1rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: white;
-          text-transform: uppercase;
-        }
-        .status-badge {
-          display: inline-block;
-          padding: 0.25rem 0.75rem;
-          border-radius: 1rem;
-          font-size: 0.75rem;
-          font-weight: 500;
-        }
-        .status-badge.confirmed {
-          background: #d1fae5;
-          color: #065f46;
-        }
-        .status-badge.unconfirmed {
-          background: #fed7aa;
-          color: #92400e;
-        }
-        .user-actions {
-          display: flex;
-          gap: 0.5rem;
-        }
-        .action-btn {
-          width: 32px;
-          height: 32px;
-          border: none;
-          border-radius: 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .action-btn.edit {
-          background: #dbeafe;
-          color: #1e40af;
-        }
-        .action-btn.edit:hover {
-          background: #bfdbfe;
-        }
-        .action-btn.delete {
-          background: #fee2e2;
-          color: #dc2626;
-        }
-        .action-btn.delete:hover {
-          background: #fecaca;
-        }
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0,0,0,0.5);
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-icon {
+          width: 50px;
+          height: 50px;
+          border-radius: 0.75rem;
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 1000;
+          font-size: 1.5rem;
+          color: white;
         }
-        .modal-content {
+        .stat-icon.blue   { background: #3b82f6; }
+        .stat-icon.cyan   { background: #06b6d4; }
+        .stat-icon.green  { background: #10b981; }
+        .stat-icon.purple { background: #8b5cf6; }
+        .stat-info h3 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--color-text);
+        }
+        .stat-info p { color: var(--color-text-muted); font-size: 0.875rem; }
+        .recent-section, .quick-actions-section {
           background: var(--color-surface);
+          border: 1px solid var(--color-border);
           border-radius: 1rem;
-          width: 90%;
-          max-width: 400px;
-          box-shadow: var(--shadow-lg);
+          padding: 1.5rem;
+          margin-bottom: 2rem;
         }
-        .modal-header {
+        .section-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 1rem 1.5rem;
-          border-bottom: 1px solid var(--color-border);
+          margin-bottom: 1.5rem;
         }
-        .modal-body {
-          padding: 1.5rem;
-        }
-        .role-options {
+        .section-header h2 { font-size: 1.25rem; color: var(--color-text); }
+        .view-all { color: var(--color-primary); text-decoration: none; font-size: 0.875rem; }
+        .recent-jobs-list { display: flex; flex-direction: column; gap: 1rem; }
+        .recent-job-item {
           display: flex;
+          align-items: center;
           gap: 1rem;
-          margin-top: 1rem;
-        }
-        .role-option {
-          flex: 1;
-          padding: 0.75rem;
-          border: 2px solid var(--color-border);
+          padding: 1rem;
           background: var(--color-bg);
-          border-radius: 0.5rem;
-          cursor: pointer;
+          border-radius: 0.75rem;
+          text-decoration: none;
           transition: all 0.2s;
         }
-        .role-option.active {
-          border-color: #06b6d4;
-          background: #cffafe;
-          color: #0891b2;
+        .recent-job-item:hover { background: var(--color-surface-2); transform: translateX(5px); }
+        .recent-job-icon {
+          width: 48px; height: 48px;
+          background: var(--color-primary-light);
+          border-radius: 0.5rem;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.25rem; font-weight: 600; color: var(--color-primary);
         }
-        .role-option.admin.active {
-          border-color: #ef4444;
-          background: #fee2e2;
-          color: #dc2626;
+        .recent-job-info { flex: 1; }
+        .recent-job-info h4 { color: var(--color-text); margin-bottom: 0.25rem; }
+        .recent-job-info p  { color: var(--color-text-muted); font-size: 0.875rem; }
+        .job-type-badge {
+          display: inline-block;
+          padding: 0.25rem 0.75rem;
+          background: #e0f2fe; color: #0891b2;
+          border-radius: 1rem; font-size: 0.75rem; font-weight: 500;
         }
+        .quick-actions-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+        }
+        .quick-action-card {
+          display: flex; align-items: center; justify-content: center;
+          gap: 0.75rem; padding: 1rem;
+          background: var(--color-bg);
+          border-radius: 0.75rem; text-decoration: none;
+          color: var(--color-text); transition: all 0.2s;
+          border: 1px solid var(--color-border);
+        }
+        .quick-action-card:hover {
+          background: var(--color-primary); color: white; transform: translateY(-2px);
+        }
+        .quick-action-card i { font-size: 1.25rem; }
       `}</style>
     </div>
   );
