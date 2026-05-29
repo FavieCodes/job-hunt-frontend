@@ -53,7 +53,6 @@ export default function DashboardLayout({
     router.push('/');
   };
 
-  // Use the shared api instance which reads the token from cookies automatically
   const triggerScraping = async () => {
     setIsScraping(true);
     try {
@@ -71,8 +70,6 @@ export default function DashboardLayout({
 
   const isAdmin = user.role === 'admin';
 
-  // Admin nav: no "My Applications" or "Saved Jobs"
-  // User nav: full set
   const navItems = isAdmin
     ? [
         { href: '/dashboard',     icon: 'fa-home',          label: 'Dashboard' },
