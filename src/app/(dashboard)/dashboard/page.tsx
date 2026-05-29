@@ -11,31 +11,50 @@ export default function DashboardHomePage() {
     totalScholarships: 0,
     applications: 0,
     savedJobs: 0,
+    totalUsers: 0,
   });
   const [recentJobs, setRecentJobs] = useState([]);
 
   useEffect(() => {
     const userData = getUser();
     setUser(userData);
-    fetchStats();
+    fetchStats(userData);
     fetchRecentJobs();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = async (userData: any) => {
+    const isAdmin = userData?.role === 'admin';
     try {
-      const [jobsRes, scholarshipsRes, applicationsRes, savedRes] = await Promise.all([
-        api.get('/jobs?page=1&limit=1'),
-        api.get('/scholarships?page=1&limit=1'),
-        api.get('/user/applications'),
-        api.get('/user/saved'),
-      ]);
-
-      setStats({
-        totalJobs: jobsRes.data.total || 0,
-        totalScholarships: scholarshipsRes.data.total || 0,
-        applications: applicationsRes.data.length || 0,
-        savedJobs: savedRes.data.length || 0,
-      });
+      if (isAdmin) {
+        // Admin: fetch platform-wide stats only
+        const [jobsRes, scholarshipsRes, usersRes] = await Promise.all([
+          api.get('/jobs?page=1&limit=1'),
+          api.get('/scholarships?page=1&limit=1'),
+          api.get('/admin/users'),
+        ]);
+        setStats({
+          totalJobs: jobsRes.data.total || 0,
+          totalScholarships: scholarshipsRes.data.total || 0,
+          applications: 0,
+          savedJobs: 0,
+          totalUsers: Array.isArray(usersRes.data) ? usersRes.data.length : 0,
+        });
+      } else {
+        // Regular user: fetch their personal stats
+        const [jobsRes, scholarshipsRes, applicationsRes, savedRes] = await Promise.all([
+          api.get('/jobs?page=1&limit=1'),
+          api.get('/scholarships?page=1&limit=1'),
+          api.get('/user/applications'),
+          api.get('/user/saved'),
+        ]);
+        setStats({
+          totalJobs: jobsRes.data.total || 0,
+          totalScholarships: scholarshipsRes.data.total || 0,
+          applications: applicationsRes.data.length || 0,
+          savedJobs: savedRes.data.length || 0,
+          totalUsers: 0,
+        });
+      }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
@@ -52,6 +71,8 @@ export default function DashboardHomePage() {
 
   if (!user) return null;
 
+  const isAdmin = user.role === 'admin';
+
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       {/* Welcome Banner */}
@@ -59,7 +80,9 @@ export default function DashboardHomePage() {
         <div>
           <h1 className="welcome-title">Welcome back, {user.username}! 👋</h1>
           <p className="welcome-subtitle">
-            Here's what's happening with your job search today
+            {isAdmin
+              ? "Here's an overview of the platform"
+              : "Here's what's happening with your job search today"}
           </p>
         </div>
         <div className="stats-badge">
@@ -92,24 +115,40 @@ export default function DashboardHomePage() {
             <p>Scholarships</p>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon green">
-            <i className="fas fa-file-alt"></i>
+
+        {/* Admin sees total users; regular users see their personal stats */}
+        {isAdmin ? (
+          <div className="stat-card">
+            <div className="stat-icon green">
+              <i className="fas fa-users"></i>
+            </div>
+            <div className="stat-info">
+              <h3>{stats.totalUsers}</h3>
+              <p>Registered Users</p>
+            </div>
           </div>
-          <div className="stat-info">
-            <h3>{stats.applications}</h3>
-            <p>Applications Sent</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon purple">
-            <i className="fas fa-bookmark"></i>
-          </div>
-          <div className="stat-info">
-            <h3>{stats.savedJobs}</h3>
-            <p>Saved Jobs</p>
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="stat-card">
+              <div className="stat-icon green">
+                <i className="fas fa-file-alt"></i>
+              </div>
+              <div className="stat-info">
+                <h3>{stats.applications}</h3>
+                <p>Applications Sent</p>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon purple">
+                <i className="fas fa-bookmark"></i>
+              </div>
+              <div className="stat-info">
+                <h3>{stats.savedJobs}</h3>
+                <p>Saved Jobs</p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Recent Jobs */}
@@ -157,14 +196,25 @@ export default function DashboardHomePage() {
             <i className="fas fa-graduation-cap"></i>
             <span>Find Scholarships</span>
           </Link>
-          <Link href="/applications" className="quick-action-card">
-            <i className="fas fa-file-alt"></i>
-            <span>Track Applications</span>
-          </Link>
-          <Link href="/profile" className="quick-action-card">
-            <i className="fas fa-user"></i>
-            <span>Update Profile</span>
-          </Link>
+          {isAdmin ? (
+            <>
+              <Link href="/admin/users" className="quick-action-card">
+                <i className="fas fa-users-cog"></i>
+                <span>Manage Users</span>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/applications" className="quick-action-card">
+                <i className="fas fa-file-alt"></i>
+                <span>Track Applications</span>
+              </Link>
+              <Link href="/profile" className="quick-action-card">
+                <i className="fas fa-user"></i>
+                <span>Update Profile</span>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
