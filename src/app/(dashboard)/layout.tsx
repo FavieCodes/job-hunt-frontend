@@ -3,35 +3,44 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { getUser, logout } from '@/lib/auth';
-import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const router   = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [user, setUser]                     = useState<any>(null);
+  const [isDarkMode, setIsDarkMode]         = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isScraping, setIsScraping] = useState(false);
+  const [isMobileMenuOpen, setMobileMenu]   = useState(false);
+  const [isScraping, setIsScraping]         = useState(false);
 
   useEffect(() => {
     const userData = getUser();
     if (!userData) { router.push('/login'); return; }
     setUser(userData);
 
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setIsDarkMode(true);
       document.documentElement.setAttribute('data-theme', 'dark');
     }
   }, [router]);
 
+  // Close settings dropdown when clicking outside
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.settings-dropdown')) setIsSettingsOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
   const toggleDarkMode = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    if (newMode) {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    if (next) {
       document.documentElement.setAttribute('data-theme', 'dark');
       localStorage.setItem('theme', 'dark');
     } else {
@@ -76,6 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: '/applications', icon: 'fa-file-alt',       label: 'My Applications' },
         { href: '/saved',        icon: 'fa-bookmark',       label: 'Saved Jobs' },
         { href: '/interview',    icon: 'fa-comments',       label: 'Interview Prep' },
+        { href: '/resume',       icon: 'fa-file-alt',       label: 'Resume Builder' },
       ];
 
   return (
@@ -88,7 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span>Job<span>Hunt</span></span>
           </Link>
           {isMobileMenuOpen && (
-            <button className="mobile-close" onClick={() => setIsMobileMenuOpen(false)}>
+            <button className="mobile-close" onClick={() => setMobileMenu(false)}>
               <i className="fas fa-times"></i>
             </button>
           )}
@@ -132,7 +142,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <main className="main-content">
         <header className="top-bar">
-          <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
+          <button className="mobile-menu-btn" onClick={() => setMobileMenu(true)}>
             <i className="fas fa-bars"></i>
           </button>
 
@@ -151,24 +161,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="top-bar-actions">
-            <button onClick={toggleDarkMode} className="theme-toggle">
-              <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-            </button>
+            {/* Dark mode toggle REMOVED from top bar — now lives inside settings dropdown */}
 
             <div className="settings-dropdown">
-              <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="settings-btn">
+              <button
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className="settings-btn"
+                title="Settings"
+              >
                 <i className="fas fa-cog"></i>
               </button>
+
               {isSettingsOpen && (
                 <div className="dropdown-menu">
-                  <Link href="/profile" className="dropdown-item">
+                  <Link href="/profile" className="dropdown-item" onClick={() => setIsSettingsOpen(false)}>
                     <i className="fas fa-user-circle"></i> My Profile
                   </Link>
-                  <Link href="/settings" className="dropdown-item">
-                    <i className="fas fa-bell"></i> Notifications
-                  </Link>
+
+                  {/* Dark / Light mode toggle inside settings */}
+                  <button className="dropdown-item" onClick={toggleDarkMode}>
+                    <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+                    {isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  </button>
+
                   <hr />
-                  <button onClick={handleLogout} className="dropdown-item logout-item">
+
+                  <button onClick={() => { handleLogout(); setIsSettingsOpen(false); }} className="dropdown-item logout-item">
                     <i className="fas fa-sign-out-alt"></i> Logout
                   </button>
                 </div>
@@ -191,7 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       {isMobileMenuOpen && (
-        <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>
+        <div className="mobile-overlay" onClick={() => setMobileMenu(false)}></div>
       )}
     </div>
   );
