@@ -3,34 +3,35 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { getUser, logout } from '@/lib/auth';
+import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router   = useRouter();
+  const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser]                     = useState<any>(null);
-  const [isDarkMode, setIsDarkMode]         = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isMobileMenuOpen, setMobileMenu]   = useState(false);
-  const [isScraping, setIsScraping]         = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScraping, setIsScraping] = useState(false);
 
   useEffect(() => {
     const userData = getUser();
     if (!userData) { router.push('/login'); return; }
     setUser(userData);
 
-    const saved = localStorage.getItem('theme');
-    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setIsDarkMode(true);
       document.documentElement.setAttribute('data-theme', 'dark');
     }
   }, [router]);
 
   const toggleDarkMode = () => {
-    const next = !isDarkMode;
-    setIsDarkMode(next);
-    if (next) {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    if (newMode) {
       document.documentElement.setAttribute('data-theme', 'dark');
       localStorage.setItem('theme', 'dark');
     } else {
@@ -63,20 +64,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navItems = isAdmin
     ? [
-        { href: '/dashboard',          icon: 'fa-home',          label: 'Dashboard' },
-        { href: '/jobs',               icon: 'fa-briefcase',     label: 'Jobs' },
-        { href: '/scholarships',       icon: 'fa-graduation-cap', label: 'Scholarships' },
-        { href: '/admin/users',        icon: 'fa-users',         label: 'Users Management' },
-        { href: '/admin/jobs',         icon: 'fa-plus-circle',   label: 'Add Jobs' },
-        { href: '/admin/scholarships', icon: 'fa-plus-square',   label: 'Add Scholarships' },
+        { href: '/dashboard',    icon: 'fa-home',           label: 'Dashboard' },
+        { href: '/jobs',         icon: 'fa-briefcase',      label: 'Jobs' },
+        { href: '/scholarships', icon: 'fa-graduation-cap', label: 'Scholarships' },
+        { href: '/admin/users',  icon: 'fa-users',          label: 'Users Management' },
       ]
     : [
-        { href: '/dashboard',    icon: 'fa-home',          label: 'Dashboard' },
-        { href: '/jobs',         icon: 'fa-briefcase',     label: 'Jobs' },
+        { href: '/dashboard',    icon: 'fa-home',           label: 'Dashboard' },
+        { href: '/jobs',         icon: 'fa-briefcase',      label: 'Jobs' },
         { href: '/scholarships', icon: 'fa-graduation-cap', label: 'Scholarships' },
-        { href: '/applications', icon: 'fa-file-alt',      label: 'My Applications' },
-        { href: '/saved',        icon: 'fa-bookmark',      label: 'Saved Jobs' },
-        { href: '/interview',    icon: 'fa-comments',      label: 'Interview Prep' },
+        { href: '/applications', icon: 'fa-file-alt',       label: 'My Applications' },
+        { href: '/saved',        icon: 'fa-bookmark',       label: 'Saved Jobs' },
+        { href: '/interview',    icon: 'fa-comments',       label: 'Interview Prep' },
       ];
 
   return (
@@ -89,7 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span>Job<span>Hunt</span></span>
           </Link>
           {isMobileMenuOpen && (
-            <button className="mobile-close" onClick={() => setMobileMenu(false)}>
+            <button className="mobile-close" onClick={() => setIsMobileMenuOpen(false)}>
               <i className="fas fa-times"></i>
             </button>
           )}
@@ -108,7 +107,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        {/* Force-scrape button: admin only */}
         {isAdmin && (
           <div className="scraper-trigger-container">
             <button
@@ -117,7 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               disabled={isScraping}
             >
               <i className={`fas fa-robot ${isScraping ? 'fa-spin' : ''}`}></i>
-              <span>{isScraping ? 'Scraping…' : '🔄 Force Scrape Now'}</span>
+              <span>{isScraping ? 'Scraping in progress...' : '🔄 Force Scrape Now'}</span>
             </button>
             <p className="scraper-hint">Manually trigger job/scholarship scraping</p>
           </div>
@@ -134,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <main className="main-content">
         <header className="top-bar">
-          <button className="mobile-menu-btn" onClick={() => setMobileMenu(true)}>
+          <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
             <i className="fas fa-bars"></i>
           </button>
 
@@ -146,9 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               id="globalSearch"
               onChange={(e) => {
                 if (pathname === '/jobs') {
-                  window.dispatchEvent(
-                    new CustomEvent('globalSearch', { detail: e.target.value })
-                  );
+                  window.dispatchEvent(new CustomEvent('globalSearch', { detail: e.target.value }));
                 }
               }}
             />
@@ -160,16 +156,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </button>
 
             <div className="settings-dropdown">
-              <button
-                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className="settings-btn"
-              >
+              <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="settings-btn">
                 <i className="fas fa-cog"></i>
               </button>
               {isSettingsOpen && (
                 <div className="dropdown-menu">
                   <Link href="/profile" className="dropdown-item">
                     <i className="fas fa-user-circle"></i> My Profile
+                  </Link>
+                  <Link href="/settings" className="dropdown-item">
+                    <i className="fas fa-bell"></i> Notifications
                   </Link>
                   <hr />
                   <button onClick={handleLogout} className="dropdown-item logout-item">
@@ -183,9 +179,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <img
                 src={
                   user?.avatar ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                    user?.username || 'U'
-                  )}&background=06b6d4&color=fff`
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=06b6d4&color=fff`
                 }
                 alt={user?.username}
               />
@@ -197,7 +191,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       {isMobileMenuOpen && (
-        <div className="mobile-overlay" onClick={() => setMobileMenu(false)}></div>
+        <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>
       )}
     </div>
   );

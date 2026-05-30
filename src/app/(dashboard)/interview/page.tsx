@@ -1,7 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { getUser } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Question {
   question: string;
@@ -22,591 +26,517 @@ interface PrepResult {
   created_at: string;
 }
 
-const JOB_FIELDS = [
-  'Software Engineering',
-  'Frontend Development',
-  'Backend Development',
-  'Full Stack Development',
-  'Data Science',
-  'Machine Learning / AI',
-  'DevOps / SRE',
-  'Product Management',
-  'UX / UI Design',
-  'Cybersecurity',
-  'Cloud Engineering',
-  'Mobile Development',
-  'Data Engineering',
-  'QA / Test Engineering',
-  'Business Analysis',
-  'Project Management',
-  'Marketing',
-  'Finance / Accounting',
-  'Human Resources',
-  'Sales',
-  'Customer Success',
-  'Other (custom)',
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const FIELDS = [
+  { label: 'Software Engineering',     icon: 'fa-code' },
+  { label: 'Data Science & Analytics', icon: 'fa-chart-bar' },
+  { label: 'Product Management',       icon: 'fa-layer-group' },
+  { label: 'UI/UX Design',             icon: 'fa-paint-brush' },
+  { label: 'DevOps & Cloud',           icon: 'fa-server' },
+  { label: 'Cybersecurity',            icon: 'fa-shield-alt' },
+  { label: 'Marketing',                icon: 'fa-bullhorn' },
+  { label: 'Finance & Accounting',     icon: 'fa-coins' },
+  { label: 'Human Resources',          icon: 'fa-users' },
+  { label: 'Sales',                    icon: 'fa-handshake' },
+  { label: 'Healthcare',               icon: 'fa-heartbeat' },
+  { label: 'Legal',                    icon: 'fa-gavel' },
+  { label: 'Custom…',                  icon: 'fa-edit' },
 ];
 
 const INTERVIEW_TYPES = [
-  { value: 'technical', label: 'Technical', icon: 'fa-code' },
-  { value: 'behavioral', label: 'Behavioral', icon: 'fa-comments' },
-  { value: 'system design', label: 'System Design', icon: 'fa-project-diagram' },
-  { value: 'case study', label: 'Case Study', icon: 'fa-briefcase' },
-  { value: 'hr/cultural fit', label: 'HR / Culture Fit', icon: 'fa-handshake' },
+  { value: 'Technical',        label: 'Technical',        icon: 'fa-laptop-code',   desc: 'Coding, algorithms & system design' },
+  { value: 'Behavioral',       label: 'Behavioral',       icon: 'fa-comments',       desc: 'Soft skills & past experience' },
+  { value: 'Case Study',       label: 'Case Study',       icon: 'fa-briefcase',      desc: 'Problem-solving & business cases' },
+  { value: 'HR / Culture Fit', label: 'HR / Culture Fit', icon: 'fa-user-check',     desc: 'Values, culture & motivation' },
+  { value: 'Portfolio Review', label: 'Portfolio Review', icon: 'fa-folder-open',    desc: 'Presenting your previous work' },
 ];
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function InterviewPrepPage() {
-  const [jobRole, setJobRole] = useState('');
-  const [customRole, setCustomRole] = useState('');
-  const [interviewType, setInterviewType] = useState('technical');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<PrepResult | null>(null);
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+
+  // Form state
+  const [selectedField, setSelectedField] = useState('');
+  const [customField, setCustomField]       = useState('');
+  const [interviewType, setInterviewType]   = useState('');
+  const [generating, setGenerating]         = useState(false);
+
+  // Results
+  const [result, setResult]   = useState<PrepResult | null>(null);
   const [history, setHistory] = useState<PrepResult[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate');
   const [expandedQ, setExpandedQ] = useState<number | null>(null);
 
   useEffect(() => {
+    const userData = getUser();
+    if (!userData) { router.push('/login'); return; }
+    // Admin should not access this page
+    if (userData.role === 'admin') { router.push('/dashboard'); return; }
+    setUser(userData);
     fetchHistory();
   }, []);
 
   const fetchHistory = async () => {
     try {
       const { data } = await api.get('/interview/history');
-      setHistory(data || []);
-    } catch {
-      // history is optional
+      setHistory(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load history', err);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
+  const resolvedField = selectedField === 'Custom…' ? customField.trim() : selectedField;
+
   const handleGenerate = async () => {
-    const role = jobRole === 'Other (custom)' ? customRole.trim() : jobRole;
-    if (!role) {
-      toast.error('Please select or enter a job field');
+    if (!resolvedField) {
+      toast.error('Please select or enter a field');
+      return;
+    }
+    if (!interviewType) {
+      toast.error('Please choose an interview type');
       return;
     }
 
-    setLoading(true);
+    setGenerating(true);
     setResult(null);
     try {
       const { data } = await api.post('/interview/generate', {
-        jobRole: role,
-        interviewType,
+        job_role: resolvedField,
+        interview_type: interviewType,
       });
-      // Questions and videos may be stored as JSON strings
-      const parsed = {
+      // The API returns the DB row; questions/videos may be JSON strings or already parsed
+      const parsed: PrepResult = {
         ...data,
         questions: typeof data.questions === 'string' ? JSON.parse(data.questions) : data.questions,
         videos:    typeof data.videos    === 'string' ? JSON.parse(data.videos)    : data.videos,
       };
       setResult(parsed);
-      fetchHistory();
-      toast.success('Interview prep generated!');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to generate prep. Please try again.');
+      setHistory(prev => [parsed, ...prev]);
+      setExpandedQ(null);
+      toast.success('Interview prep ready!');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to generate prep. Try again.');
     } finally {
-      setLoading(false);
+      setGenerating(false);
     }
   };
 
   const loadFromHistory = (item: PrepResult) => {
-    const parsed = {
+    const parsed: PrepResult = {
       ...item,
       questions: typeof item.questions === 'string' ? JSON.parse(item.questions) : item.questions,
       videos:    typeof item.videos    === 'string' ? JSON.parse(item.videos)    : item.videos,
     };
     setResult(parsed);
-    setShowHistory(false);
+    setActiveTab('generate');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (!user) return null;
+
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+      {/* ── Page header ── */}
       <div className="page-header">
         <h1><i className="fas fa-comments"></i> Interview Prep</h1>
-        <p>Get AI-generated practice questions and video resources tailored to your target role</p>
+        <p>AI-generated practice questions and resources tailored to your target role</p>
       </div>
 
-      {/* Config card */}
-      <div className="config-card">
-        <h2 className="config-title">
-          <i className="fas fa-sliders-h"></i> Customize Your Prep
-        </h2>
-
-        {/* Job field selector */}
-        <div className="field-group">
-          <label className="field-label">
-            <i className="fas fa-briefcase"></i> Job Field / Role
-          </label>
-          <div className="fields-grid">
-            {JOB_FIELDS.map((field) => (
-              <button
-                key={field}
-                onClick={() => setJobRole(field)}
-                className={`field-chip ${jobRole === field ? 'selected' : ''}`}
-              >
-                {field}
-              </button>
-            ))}
-          </div>
-          {jobRole === 'Other (custom)' && (
-            <input
-              type="text"
-              placeholder="Enter your job role e.g. Blockchain Developer"
-              value={customRole}
-              onChange={(e) => setCustomRole(e.target.value)}
-              className="custom-input"
-            />
-          )}
-        </div>
-
-        {/* Interview type */}
-        <div className="field-group">
-          <label className="field-label">
-            <i className="fas fa-clipboard-list"></i> Interview Type
-          </label>
-          <div className="type-row">
-            {INTERVIEW_TYPES.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => setInterviewType(t.value)}
-                className={`type-btn ${interviewType === t.value ? 'selected' : ''}`}
-              >
-                <i className={`fas ${t.icon}`}></i>
-                <span>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="action-row">
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className="generate-btn"
-          >
-            {loading ? (
-              <><i className="fas fa-spinner fa-spin"></i> Generating…</>
-            ) : (
-              <><i className="fas fa-magic"></i> Generate Prep</>
-            )}
-          </button>
-          {history.length > 0 && (
-            <button onClick={() => setShowHistory(!showHistory)} className="history-btn">
-              <i className="fas fa-history"></i> History ({history.length})
-            </button>
-          )}
-        </div>
+      {/* ── Tabs ── */}
+      <div className="tabs">
+        <button className={`tab ${activeTab === 'generate' ? 'active' : ''}`} onClick={() => setActiveTab('generate')}>
+          <i className="fas fa-magic"></i> Generate Prep
+        </button>
+        <button className={`tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+          <i className="fas fa-history"></i> My History
+          {history.length > 0 && <span className="tab-badge">{history.length}</span>}
+        </button>
       </div>
 
-      {/* History panel */}
-      {showHistory && history.length > 0 && (
-        <div className="history-panel">
-          <h3 className="history-title"><i className="fas fa-history"></i> Previous Sessions</h3>
-          <div className="history-list">
-            {history.map((item) => (
-              <button key={item.id} onClick={() => loadFromHistory(item)} className="history-item">
-                <div>
-                  <strong>{item.job_role}</strong>
-                  <span className="history-type">{item.interview_type}</span>
-                </div>
-                <span className="history-date">
-                  {new Date(item.created_at).toLocaleDateString()}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ════════════════════ GENERATE TAB ════════════════════ */}
+      {activeTab === 'generate' && (
+        <div className="generate-layout">
 
-      {/* Loading skeleton */}
-      {loading && (
-        <div className="result-card">
-          <div className="skeleton-heading"></div>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="skeleton-question">
-              <div className="skeleton-line wide"></div>
-              <div className="skeleton-line narrow"></div>
-            </div>
-          ))}
-        </div>
-      )}
+          {/* Left — form */}
+          <div className="form-panel">
 
-      {/* Result */}
-      {result && !loading && (
-        <div className="result-card">
-          <div className="result-header">
-            <div>
-              <h2 className="result-title">
-                <i className="fas fa-check-circle"></i> {result.job_role}
-              </h2>
-              <span className="result-type-badge">{result.interview_type} interview</span>
-            </div>
-            <button onClick={handleGenerate} className="regen-btn">
-              <i className="fas fa-redo"></i> Regenerate
-            </button>
-          </div>
-
-          {/* Questions */}
-          <section className="section">
-            <h3 className="section-title">
-              <i className="fas fa-question-circle"></i> Practice Questions
-            </h3>
-            <div className="questions-list">
-              {result.questions?.map((q, i) => (
-                <div
-                  key={i}
-                  className={`question-item ${expandedQ === i ? 'open' : ''}`}
-                  onClick={() => setExpandedQ(expandedQ === i ? null : i)}
-                >
-                  <div className="question-header">
-                    <span className="q-number">{i + 1}</span>
-                    <p className="q-text">{q.question}</p>
-                    <i className={`fas fa-chevron-${expandedQ === i ? 'up' : 'down'} q-chevron`}></i>
-                  </div>
-                  {expandedQ === i && (
-                    <div className="tip-box">
-                      <i className="fas fa-lightbulb"></i>
-                      <p>{q.tip}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Videos */}
-          {result.videos && result.videos.length > 0 && (
-            <section className="section">
-              <h3 className="section-title">
-                <i className="fab fa-youtube"></i> Recommended Resources
-              </h3>
-              <div className="videos-list">
-                {result.videos.map((v, i) => (
-                  <a
-                    key={i}
-                    href={v.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="video-item"
+            {/* Step 1 — field */}
+            <div className="form-section">
+              <h3><span className="step-num">1</span> Choose Your Field</h3>
+              <div className="fields-grid">
+                {FIELDS.map(f => (
+                  <button
+                    key={f.label}
+                    className={`field-btn ${selectedField === f.label ? 'selected' : ''}`}
+                    onClick={() => { setSelectedField(f.label); if (f.label !== 'Custom…') setCustomField(''); }}
                   >
-                    <div className="video-icon">
-                      <i className="fab fa-youtube"></i>
-                    </div>
-                    <div className="video-info">
-                      <p className="video-title">{v.title}</p>
-                      <span className="video-link">Search on YouTube →</span>
-                    </div>
-                  </a>
+                    <i className={`fas ${f.icon}`}></i>
+                    <span>{f.label}</span>
+                  </button>
                 ))}
               </div>
-            </section>
+              {selectedField === 'Custom…' && (
+                <div className="custom-field">
+                  <input
+                    type="text"
+                    placeholder="e.g. Robotics Engineer, Supply Chain Analyst…"
+                    value={customField}
+                    onChange={(e) => setCustomField(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Step 2 — interview type */}
+            <div className="form-section">
+              <h3><span className="step-num">2</span> Interview Type</h3>
+              <div className="types-list">
+                {INTERVIEW_TYPES.map(t => (
+                  <button
+                    key={t.value}
+                    className={`type-btn ${interviewType === t.value ? 'selected' : ''}`}
+                    onClick={() => setInterviewType(t.value)}
+                  >
+                    <div className="type-icon"><i className={`fas ${t.icon}`}></i></div>
+                    <div className="type-info">
+                      <span className="type-label">{t.label}</span>
+                      <span className="type-desc">{t.desc}</span>
+                    </div>
+                    {interviewType === t.value && <i className="fas fa-check-circle type-check"></i>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Generate button */}
+            <button
+              className="generate-btn"
+              onClick={handleGenerate}
+              disabled={generating || !resolvedField || !interviewType}
+            >
+              {generating ? (
+                <><i className="fas fa-spinner fa-spin"></i> Generating your prep…</>
+              ) : (
+                <><i className="fas fa-magic"></i> Generate Interview Prep</>
+              )}
+            </button>
+          </div>
+
+          {/* Right — results */}
+          <div className="results-panel">
+            {generating && (
+              <div className="generating-state">
+                <div className="pulse-ring"></div>
+                <i className="fas fa-brain"></i>
+                <p>AI is crafting your personalised prep…</p>
+                <small>This usually takes 5–15 seconds</small>
+              </div>
+            )}
+
+            {!generating && !result && (
+              <div className="empty-results">
+                <i className="fas fa-comments"></i>
+                <h3>Ready when you are</h3>
+                <p>Pick a field and interview type on the left, then hit Generate.</p>
+              </div>
+            )}
+
+            {!generating && result && (
+              <div className="prep-results">
+                <div className="results-header">
+                  <div>
+                    <h2>{result.job_role}</h2>
+                    <span className="results-badge">{result.interview_type} Interview</span>
+                  </div>
+                  <button className="reset-btn" onClick={() => setResult(null)}>
+                    <i className="fas fa-redo"></i> New Prep
+                  </button>
+                </div>
+
+                {/* Questions */}
+                <h4 className="section-label"><i className="fas fa-list-ul"></i> Practice Questions</h4>
+                <div className="questions-list">
+                  {result.questions.map((q, i) => (
+                    <div key={i} className={`question-item ${expandedQ === i ? 'open' : ''}`}>
+                      <button className="question-header" onClick={() => setExpandedQ(expandedQ === i ? null : i)}>
+                        <span className="q-num">{i + 1}</span>
+                        <span className="q-text">{q.question}</span>
+                        <i className={`fas fa-chevron-${expandedQ === i ? 'up' : 'down'}`}></i>
+                      </button>
+                      {expandedQ === i && (
+                        <div className="question-tip">
+                          <i className="fas fa-lightbulb"></i>
+                          <p>{q.tip}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Videos */}
+                {result.videos?.length > 0 && (
+                  <>
+                    <h4 className="section-label" style={{ marginTop: '1.5rem' }}>
+                      <i className="fab fa-youtube"></i> Recommended Resources
+                    </h4>
+                    <div className="videos-list">
+                      {result.videos.map((v, i) => (
+                        <a key={i} href={v.url} target="_blank" rel="noopener noreferrer" className="video-card">
+                          <div className="video-icon"><i className="fab fa-youtube"></i></div>
+                          <div className="video-info">
+                            <span className="video-title">{v.title}</span>
+                            <span className="video-url">Search on YouTube →</span>
+                          </div>
+                          <i className="fas fa-external-link-alt video-ext"></i>
+                        </a>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════ HISTORY TAB ════════════════════ */}
+      {activeTab === 'history' && (
+        <div className="history-panel">
+          {loadingHistory ? (
+            <div className="empty-results"><i className="fas fa-spinner fa-spin"></i><p>Loading history…</p></div>
+          ) : history.length === 0 ? (
+            <div className="empty-results">
+              <i className="fas fa-history"></i>
+              <h3>No history yet</h3>
+              <p>Generate your first interview prep to see it here.</p>
+            </div>
+          ) : (
+            <div className="history-grid">
+              {history.map((item) => {
+                const qs = typeof item.questions === 'string' ? JSON.parse(item.questions) : item.questions;
+                return (
+                  <div key={item.id} className="history-card" onClick={() => loadFromHistory(item)}>
+                    <div className="history-card-top">
+                      <h4>{item.job_role}</h4>
+                      <span className="results-badge">{item.interview_type}</span>
+                    </div>
+                    <p className="history-preview">{qs[0]?.question?.slice(0, 90)}…</p>
+                    <div className="history-meta">
+                      <span><i className="fas fa-question-circle"></i> {qs.length} questions</span>
+                      <span><i className="fas fa-clock"></i> {new Date(item.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
 
       <style jsx>{`
-        .page-header { margin-bottom: 2rem; }
-        .page-header h1 { font-size: 2rem; color: var(--color-text); margin-bottom: 0.5rem; }
-        .page-header p  { color: var(--color-text-muted); }
+        .page-header { margin-bottom: 1.5rem; }
+        .page-header h1 { font-size: 2rem; color: var(--color-text); margin-bottom: .4rem; }
+        .page-header p { color: var(--color-text-muted); }
 
-        /* Config card */
-        .config-card {
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: 1rem;
-          padding: 2rem;
-          margin-bottom: 1.5rem;
+        /* Tabs */
+        .tabs { display: flex; gap: .5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--color-border); padding-bottom: .5rem; }
+        .tab {
+          display: flex; align-items: center; gap: .5rem;
+          padding: .6rem 1.25rem; background: none; border: none;
+          color: var(--color-text-muted); font-size: .95rem; cursor: pointer;
+          border-radius: .5rem .5rem 0 0; transition: all .2s; position: relative;
         }
-        .config-title {
-          font-size: 1.2rem;
-          color: var(--color-text);
-          margin-bottom: 1.5rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
+        .tab.active { color: var(--color-primary, #06b6d4); font-weight: 600; background: var(--color-surface); }
+        .tab-badge {
+          background: var(--color-primary, #06b6d4); color: white;
+          border-radius: 9999px; padding: .1rem .45rem; font-size: .7rem; font-weight: 700;
         }
-        .field-group { margin-bottom: 1.5rem; }
-        .field-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-weight: 600;
-          color: var(--color-text);
-          margin-bottom: 0.75rem;
-          font-size: 0.95rem;
+
+        /* Generate layout */
+        .generate-layout { display: grid; grid-template-columns: 420px 1fr; gap: 1.5rem; align-items: start; }
+        @media (max-width: 900px) { .generate-layout { grid-template-columns: 1fr; } }
+
+        /* Form panel */
+        .form-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; }
+        .form-section { margin-bottom: 1.75rem; }
+        .form-section h3 {
+          display: flex; align-items: center; gap: .6rem;
+          font-size: 1rem; color: var(--color-text); margin-bottom: 1rem;
         }
-        .fields-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
+        .step-num {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 24px; height: 24px; background: var(--color-primary, #06b6d4);
+          color: white; border-radius: 50%; font-size: .75rem; font-weight: 700; flex-shrink: 0;
         }
-        .field-chip {
-          padding: 0.4rem 0.9rem;
-          border: 1.5px solid var(--color-border);
-          border-radius: 2rem;
-          background: var(--color-bg);
-          color: var(--color-text);
-          cursor: pointer;
-          font-size: 0.85rem;
-          transition: all 0.2s;
+
+        /* Fields grid */
+        .fields-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .5rem; }
+        .field-btn {
+          display: flex; align-items: center; gap: .5rem;
+          padding: .55rem .75rem; background: var(--color-bg);
+          border: 1px solid var(--color-border); border-radius: .6rem;
+          color: var(--color-text-muted); font-size: .82rem; cursor: pointer;
+          transition: all .2s; text-align: left;
         }
-        .field-chip:hover  { border-color: #06b6d4; color: #06b6d4; }
-        .field-chip.selected {
-          background: #06b6d4;
-          border-color: #06b6d4;
-          color: white;
-          font-weight: 600;
+        .field-btn i { font-size: .9rem; flex-shrink: 0; }
+        .field-btn:hover { border-color: var(--color-primary, #06b6d4); color: var(--color-primary, #06b6d4); }
+        .field-btn.selected { border-color: var(--color-primary, #06b6d4); background: #e0f9ff; color: #0e7490; font-weight: 600; }
+        .custom-field { margin-top: .75rem; }
+        .custom-field input {
+          width: 100%; padding: .65rem .9rem; background: var(--color-bg);
+          border: 1px solid var(--color-primary, #06b6d4); border-radius: .6rem;
+          color: var(--color-text); font-size: .95rem; outline: none;
+          box-sizing: border-box;
         }
-        .custom-input {
-          width: 100%;
-          margin-top: 0.75rem;
-          padding: 0.65rem 1rem;
-          border: 1.5px solid #06b6d4;
-          border-radius: 0.5rem;
-          background: var(--color-bg);
-          color: var(--color-text);
-          font-size: 0.95rem;
-          outline: none;
-        }
-        .type-row { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+        /* Interview types */
+        .types-list { display: flex; flex-direction: column; gap: .5rem; }
         .type-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          padding: 0.55rem 1rem;
-          border: 1.5px solid var(--color-border);
-          border-radius: 0.5rem;
-          background: var(--color-bg);
-          color: var(--color-text);
-          cursor: pointer;
-          font-size: 0.875rem;
-          transition: all 0.2s;
+          display: flex; align-items: center; gap: .75rem;
+          padding: .75rem 1rem; background: var(--color-bg);
+          border: 1px solid var(--color-border); border-radius: .7rem;
+          cursor: pointer; transition: all .2s; text-align: left;
         }
-        .type-btn:hover { border-color: #06b6d4; }
-        .type-btn.selected {
-          background: linear-gradient(135deg, #06b6d4, #1e3a8a);
-          border-color: transparent;
-          color: white;
-          font-weight: 600;
+        .type-btn:hover { border-color: var(--color-primary, #06b6d4); }
+        .type-btn.selected { border-color: var(--color-primary, #06b6d4); background: #e0f9ff; }
+        .type-icon {
+          width: 36px; height: 36px; border-radius: .5rem;
+          background: var(--color-surface); display: flex; align-items: center; justify-content: center;
+          color: var(--color-primary, #06b6d4); font-size: 1rem; flex-shrink: 0;
         }
-        .action-row { display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; }
+        .type-info { flex: 1; display: flex; flex-direction: column; gap: .15rem; }
+        .type-label { font-size: .9rem; font-weight: 600; color: var(--color-text); }
+        .type-desc  { font-size: .75rem; color: var(--color-text-muted); }
+        .type-check { color: #10b981; font-size: 1.1rem; }
+
+        /* Generate button */
         .generate-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.75rem;
-          background: linear-gradient(135deg, #06b6d4, #1e3a8a);
-          color: white;
-          border: none;
-          border-radius: 0.75rem;
-          font-size: 1rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: opacity 0.2s;
+          width: 100%; display: flex; align-items: center; justify-content: center; gap: .6rem;
+          padding: .85rem; background: var(--color-primary, #06b6d4); color: white;
+          border: none; border-radius: .75rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+          transition: all .2s;
         }
-        .generate-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .history-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1.25rem;
-          background: var(--color-bg);
-          border: 1.5px solid var(--color-border);
-          border-radius: 0.75rem;
-          color: var(--color-text);
-          font-size: 0.9rem;
-          cursor: pointer;
+        .generate-btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+        .generate-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+        /* Results panel */
+        .results-panel {
+          background: var(--color-surface); border: 1px solid var(--color-border);
+          border-radius: 1rem; padding: 1.5rem; min-height: 400px;
+          display: flex; flex-direction: column;
         }
 
-        /* History panel */
-        .history-panel {
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: 1rem;
-          padding: 1.5rem;
-          margin-bottom: 1.5rem;
+        /* Generating state */
+        .generating-state {
+          flex: 1; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; gap: .75rem; color: var(--color-text-muted);
+          text-align: center;
         }
-        .history-title { font-size: 1rem; margin-bottom: 1rem; color: var(--color-text); }
-        .history-list  { display: flex; flex-direction: column; gap: 0.5rem; }
-        .history-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem 1rem;
-          background: var(--color-bg);
-          border: 1px solid var(--color-border);
-          border-radius: 0.5rem;
-          cursor: pointer;
-          text-align: left;
-          width: 100%;
-          transition: background 0.2s;
+        .generating-state i.fa-brain { font-size: 2.5rem; color: var(--color-primary, #06b6d4); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+        .pulse-ring {
+          width: 70px; height: 70px; border-radius: 50%;
+          border: 3px solid var(--color-primary, #06b6d4);
+          animation: ring 1.5s infinite; position: absolute;
         }
-        .history-item:hover { background: var(--color-surface-2); }
-        .history-type {
-          display: inline-block;
-          margin-left: 0.5rem;
-          padding: 0.15rem 0.5rem;
-          background: #e0f2fe;
-          color: #0891b2;
-          border-radius: 1rem;
-          font-size: 0.75rem;
-        }
-        .history-date { font-size: 0.8rem; color: var(--color-text-muted); }
+        @keyframes ring { 0% { transform: scale(.8); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
 
-        /* Skeleton */
-        .result-card {
-          background: var(--color-surface);
-          border: 1px solid var(--color-border);
-          border-radius: 1rem;
-          padding: 2rem;
-          margin-bottom: 2rem;
+        /* Empty results */
+        .empty-results {
+          flex: 1; display: flex; flex-direction: column; align-items: center;
+          justify-content: center; gap: .75rem; color: var(--color-text-muted); text-align: center;
         }
-        .skeleton-heading {
-          height: 1.5rem; background: var(--color-border);
-          border-radius: 0.5rem; margin-bottom: 1.5rem; width: 60%;
-          animation: pulse 1.5s infinite;
-        }
-        .skeleton-question {
-          padding: 1rem;
-          border: 1px solid var(--color-border);
-          border-radius: 0.5rem;
-          margin-bottom: 0.75rem;
-        }
-        .skeleton-line {
-          height: 0.875rem;
-          background: var(--color-border);
-          border-radius: 0.25rem;
-          margin-bottom: 0.5rem;
-          animation: pulse 1.5s infinite;
-        }
-        .skeleton-line.wide  { width: 90%; }
-        .skeleton-line.narrow { width: 60%; }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.4; }
-        }
+        .empty-results i { font-size: 3rem; opacity: .3; }
+        .empty-results h3 { font-size: 1.1rem; color: var(--color-text); }
 
-        /* Result */
-        .result-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 1.5rem;
-          flex-wrap: wrap;
-          gap: 1rem;
+        /* Prep results */
+        .prep-results { width: 100%; }
+        .results-header {
+          display: flex; justify-content: space-between; align-items: flex-start;
+          margin-bottom: 1.25rem; gap: 1rem;
         }
-        .result-title {
-          font-size: 1.4rem;
-          color: var(--color-text);
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
+        .results-header h2 { font-size: 1.3rem; color: var(--color-text); margin-bottom: .4rem; }
+        .results-badge {
+          display: inline-block; padding: .25rem .75rem;
+          background: #e0f9ff; color: #0e7490;
+          border-radius: 2rem; font-size: .78rem; font-weight: 600;
         }
-        .result-title i { color: #10b981; }
-        .result-type-badge {
-          display: inline-block;
-          margin-top: 0.25rem;
-          padding: 0.25rem 0.75rem;
-          background: #e0f2fe;
-          color: #0891b2;
-          border-radius: 1rem;
-          font-size: 0.8rem;
-          font-weight: 500;
-          text-transform: capitalize;
+        .reset-btn {
+          display: flex; align-items: center; gap: .4rem;
+          padding: .5rem 1rem; background: var(--color-bg);
+          border: 1px solid var(--color-border); border-radius: .6rem;
+          color: var(--color-text-muted); cursor: pointer; font-size: .85rem;
+          transition: all .2s; white-space: nowrap;
         }
-        .regen-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          padding: 0.5rem 1rem;
-          border: 1.5px solid var(--color-border);
-          border-radius: 0.5rem;
-          background: var(--color-bg);
-          color: var(--color-text);
-          cursor: pointer;
-          font-size: 0.875rem;
-          transition: all 0.2s;
-        }
-        .regen-btn:hover { border-color: #06b6d4; color: #06b6d4; }
+        .reset-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .section-label { display: flex; align-items: center; gap: .5rem; color: var(--color-text); font-size: .95rem; margin-bottom: .75rem; }
+        .section-label i { color: var(--color-primary, #06b6d4); }
 
-        .section { margin-bottom: 2rem; }
-        .section-title {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: var(--color-text);
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin-bottom: 1rem;
-          padding-bottom: 0.5rem;
-          border-bottom: 2px solid var(--color-border);
-        }
-
-        .questions-list { display: flex; flex-direction: column; gap: 0.75rem; }
-        .question-item {
-          border: 1.5px solid var(--color-border);
-          border-radius: 0.75rem;
-          overflow: hidden;
-          cursor: pointer;
-          transition: border-color 0.2s;
-        }
-        .question-item:hover  { border-color: #06b6d4; }
-        .question-item.open   { border-color: #06b6d4; }
+        /* Questions accordion */
+        .questions-list { display: flex; flex-direction: column; gap: .5rem; }
+        .question-item { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: .75rem; overflow: hidden; }
+        .question-item.open { border-color: var(--color-primary, #06b6d4); }
         .question-header {
-          display: flex;
-          align-items: flex-start;
-          gap: 1rem;
-          padding: 1rem 1.25rem;
-          background: var(--color-bg);
+          width: 100%; display: flex; align-items: center; gap: .75rem;
+          padding: .85rem 1rem; background: none; border: none; cursor: pointer;
+          text-align: left; color: var(--color-text);
         }
-        .q-number {
-          flex-shrink: 0;
-          width: 28px;
-          height: 28px;
-          background: #06b6d4;
-          color: white;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.8rem;
-          font-weight: 700;
-        }
-        .q-text  { flex: 1; color: var(--color-text); font-size: 0.95rem; line-height: 1.5; margin: 0; }
-        .q-chevron { color: var(--color-text-muted); margin-left: auto; flex-shrink: 0; margin-top: 0.25rem; }
-        .tip-box {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.75rem;
-          padding: 1rem 1.25rem;
-          background: #f0fdf4;
-          border-top: 1px solid #d1fae5;
-        }
-        .tip-box i { color: #10b981; flex-shrink: 0; margin-top: 0.2rem; }
-        .tip-box p { color: #065f46; font-size: 0.875rem; line-height: 1.6; margin: 0; }
-
-        .videos-list { display: flex; flex-direction: column; gap: 0.75rem; }
-        .video-item {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 1rem 1.25rem;
-          background: var(--color-bg);
-          border: 1.5px solid var(--color-border);
-          border-radius: 0.75rem;
-          text-decoration: none;
-          transition: all 0.2s;
-        }
-        .video-item:hover { border-color: #ef4444; transform: translateX(4px); }
-        .video-icon {
-          width: 44px; height: 44px;
-          background: #fee2e2;
-          border-radius: 0.5rem;
+        .q-num {
+          min-width: 26px; height: 26px; border-radius: 50%;
+          background: var(--color-primary, #06b6d4); color: white;
           display: flex; align-items: center; justify-content: center;
-          font-size: 1.4rem; color: #ef4444; flex-shrink: 0;
+          font-size: .75rem; font-weight: 700;
         }
-        .video-title { color: var(--color-text); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
-        .video-link  { color: #06b6d4; font-size: 0.8rem; }
+        .q-text { flex: 1; font-size: .9rem; line-height: 1.4; }
+        .question-header .fa-chevron-up, .question-header .fa-chevron-down { color: var(--color-text-muted); font-size: .8rem; }
+        .question-tip {
+          display: flex; align-items: flex-start; gap: .65rem;
+          padding: .85rem 1rem; background: #f0fdf4;
+          border-top: 1px solid #bbf7d0;
+        }
+        .question-tip i { color: #16a34a; font-size: 1rem; margin-top: .1rem; flex-shrink: 0; }
+        .question-tip p { font-size: .875rem; color: #166534; line-height: 1.5; margin: 0; }
+
+        /* Videos */
+        .videos-list { display: flex; flex-direction: column; gap: .5rem; }
+        .video-card {
+          display: flex; align-items: center; gap: .75rem;
+          padding: .75rem 1rem; background: var(--color-bg);
+          border: 1px solid var(--color-border); border-radius: .75rem;
+          text-decoration: none; transition: all .2s;
+        }
+        .video-card:hover { border-color: #ef4444; background: #fff5f5; }
+        .video-icon {
+          width: 36px; height: 36px; border-radius: .5rem;
+          background: #fee2e2; display: flex; align-items: center; justify-content: center;
+          color: #ef4444; font-size: 1rem; flex-shrink: 0;
+        }
+        .video-info { flex: 1; display: flex; flex-direction: column; gap: .15rem; }
+        .video-title { font-size: .9rem; font-weight: 600; color: var(--color-text); }
+        .video-url   { font-size: .75rem; color: var(--color-text-muted); }
+        .video-ext   { color: var(--color-text-muted); font-size: .8rem; }
+
+        /* History */
+        .history-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; }
+        .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .history-card {
+          background: var(--color-bg); border: 1px solid var(--color-border);
+          border-radius: .75rem; padding: 1.25rem; cursor: pointer;
+          transition: all .2s;
+        }
+        .history-card:hover { border-color: var(--color-primary, #06b6d4); transform: translateY(-2px); }
+        .history-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; margin-bottom: .6rem; }
+        .history-card h4 { font-size: .95rem; color: var(--color-text); margin: 0; }
+        .history-preview { font-size: .82rem; color: var(--color-text-muted); line-height: 1.45; margin-bottom: .75rem; }
+        .history-meta { display: flex; gap: 1rem; font-size: .78rem; color: var(--color-text-muted); }
+        .history-meta span { display: flex; align-items: center; gap: .3rem; }
       `}</style>
     </div>
   );

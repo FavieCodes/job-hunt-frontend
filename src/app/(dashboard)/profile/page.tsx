@@ -7,17 +7,19 @@ import api from '@/lib/api';
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [username, setUsername] = useState('');
-  const [formData, setFormData] = useState({
+  const [savingUsername, setSavingUsername] = useState(false);
+
+  const [avatar, setAvatar] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
-  const [avatar, setAvatar] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [savingUsername, setSavingUsername] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const userData = getUser();
@@ -33,16 +35,14 @@ export default function ProfilePage() {
       const { data } = await api.get('/user/profile');
       if (data.avatar) setAvatar(data.avatar);
       if (data.is_google_user !== undefined) {
-        setUser((prev: any) =>
-          prev ? { ...prev, is_google_user: data.is_google_user, created_at: data.created_at } : prev
-        );
+        setUser((prev: any) => prev ? { ...prev, is_google_user: data.is_google_user } : prev);
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     }
   };
 
-  // ── Avatar upload ─────────────────────────────────────────────────────────
+  // ── Avatar ──────────────────────────────────────────────────────────────────
 
   const handleAvatarClick = () => fileInputRef.current?.click();
 
@@ -54,9 +54,8 @@ export default function ProfilePage() {
       toast.error('Please upload an image file');
       return;
     }
-    // Allow up to 5 MB on the client side (server accepts up to 10 MB base64)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5 MB');
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be less than 2 MB');
       return;
     }
 
@@ -66,21 +65,20 @@ export default function ProfilePage() {
     reader.onloadend = async () => {
       try {
         const base64String = reader.result as string;
-        // Send ONLY avatar — do not touch username
+        // PATCH only the avatar field — username is NOT sent here
         const { data } = await api.patch('/user/profile', { avatar: base64String });
-        const newAvatar = data.avatar || base64String;
-        setAvatar(newAvatar);
+        setAvatar(data.avatar);
 
-        // Persist updated avatar to cookie
+        // Persist new avatar in the cookie so it survives page refresh
         const stored = getUser();
         if (stored) {
-          const updated = { ...stored, avatar: newAvatar };
+          const updated = { ...stored, avatar: data.avatar };
           Cookies.set('user', JSON.stringify(updated), { expires: 7 });
           setUser(updated);
         }
         toast.success('Profile picture updated!');
       } catch (error: any) {
-        const msg = error?.response?.data?.error || 'Failed to upload avatar';
+        const msg = error?.response?.data?.error || 'Failed to upload profile picture';
         toast.error(msg);
       } finally {
         setUploading(false);
@@ -94,56 +92,55 @@ export default function ProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  // ── Username update ───────────────────────────────────────────────────────
+  // ── Username ────────────────────────────────────────────────────────────────
 
-  const handleUpdateUsername = async () => {
-    const trimmed = username.trim();
-    if (!trimmed) { toast.error('Username cannot be empty'); return; }
-    if (trimmed === user?.username) { setIsEditing(false); return; }
-
+  const handleSaveUsername = async () => {
+    if (!username.trim()) {
+      toast.error('Username cannot be empty');
+      return;
+    }
     setSavingUsername(true);
     try {
-      // Send ONLY username — do not touch avatar
-      await api.patch('/user/profile', { username: trimmed });
+      // PATCH only the username field — avatar is NOT sent here
+      await api.patch('/user/profile', { username: username.trim() });
       const stored = getUser();
       if (stored) {
-        const updated = { ...stored, username: trimmed };
+        const updated = { ...stored, username: username.trim() };
         Cookies.set('user', JSON.stringify(updated), { expires: 7 });
         setUser(updated);
       }
-      toast.success('Username updated successfully');
-      setIsEditing(false);
+      toast.success('Username updated!');
+      setIsEditingUsername(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Update failed');
+      toast.error(error.response?.data?.error || 'Failed to update username');
     } finally {
       setSavingUsername(false);
     }
   };
 
-  // ── Password change ───────────────────────────────────────────────────────
+  // ── Password ────────────────────────────────────────────────────────────────
 
   const handleChangePassword = async () => {
-    if (formData.newPassword !== formData.confirmPassword) {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error('Passwords do not match');
       return;
     }
-    if (formData.newPassword.length < 8) {
+    if (passwordForm.newPassword.length < 8) {
       toast.error('Password must be at least 8 characters');
       return;
     }
-    if (formData.newPassword === formData.currentPassword) {
-      toast.error('New password must differ from current password');
+    if (passwordForm.newPassword === passwordForm.currentPassword) {
+      toast.error('New password must be different from current password');
       return;
     }
-
     try {
       await changePassword(
-        formData.currentPassword,
-        formData.newPassword,
-        formData.confirmPassword
+        passwordForm.currentPassword,
+        passwordForm.newPassword,
+        passwordForm.confirmPassword
       );
       toast.success('Password changed successfully');
-      setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to change password');
     }
@@ -166,7 +163,7 @@ export default function ProfilePage() {
         <div className="profile-card">
           <h3>Profile Picture</h3>
           <div className="avatar-section">
-            <div className="avatar-wrapper" onClick={handleAvatarClick}>
+            <div className="avatar-wrapper" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
               <img
                 src={
                   avatar ||
@@ -193,45 +190,62 @@ export default function ProfilePage() {
                 <i className="fas fa-spinner fa-spin"></i> Uploading…
               </p>
             )}
-            <p className="avatar-hint">Click image to change • Max 5 MB</p>
+            <p className="avatar-hint">Click the image to change your profile picture</p>
           </div>
         </div>
 
-        {/* ── Personal info ───────────────────────────────────────────────── */}
+        {/* ── Personal Information ────────────────────────────────────────── */}
         <div className="profile-card">
-          <div className="card-header">
-            <h3>Personal Information</h3>
-            <button
-              onClick={() => { setIsEditing(!isEditing); setUsername(user.username); }}
-              className="edit-btn"
-            >
-              <i className={`fas ${isEditing ? 'fa-times' : 'fa-pen'}`}></i>
-              {isEditing ? 'Cancel' : 'Edit'}
-            </button>
-          </div>
+          <h3>Personal Information</h3>
 
           <div className="profile-info">
+            {/* Username — independent edit */}
             <div className="info-field">
               <label>Username</label>
-              {isEditing ? (
-                <div className="edit-row">
+              {isEditingUsername ? (
+                <div className="inline-edit">
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateUsername(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveUsername();
+                      if (e.key === 'Escape') {
+                        setUsername(user.username);
+                        setIsEditingUsername(false);
+                      }
+                    }}
                     autoFocus
                   />
-                  <button
-                    onClick={handleUpdateUsername}
-                    className="save-inline-btn"
-                    disabled={savingUsername}
-                  >
-                    {savingUsername ? <i className="fas fa-spinner fa-spin"></i> : 'Save'}
-                  </button>
+                  <div className="inline-edit-actions">
+                    <button
+                      className="inline-save-btn"
+                      onClick={handleSaveUsername}
+                      disabled={savingUsername}
+                    >
+                      {savingUsername
+                        ? <i className="fas fa-spinner fa-spin"></i>
+                        : <i className="fas fa-check"></i>}
+                    </button>
+                    <button
+                      className="inline-cancel-btn"
+                      onClick={() => { setUsername(user.username); setIsEditingUsername(false); }}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <p>{user.username}</p>
+                <div className="field-display">
+                  <p>{user.username}</p>
+                  <button
+                    className="edit-inline-btn"
+                    onClick={() => setIsEditingUsername(true)}
+                    title="Edit username"
+                  >
+                    <i className="fas fa-pen"></i>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -258,7 +272,7 @@ export default function ProfilePage() {
 
             <div className="info-field">
               <label>Member Since</label>
-              <p>{user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}</p>
+              <p>{new Date(user.created_at).toLocaleDateString()}</p>
             </div>
           </div>
         </div>
@@ -273,10 +287,9 @@ export default function ProfilePage() {
               <div>
                 <p className="notice-title">Password change not available</p>
                 <p className="notice-body">
-                  Your account is linked to Google — there is no password to change here.
-                  Manage security at{' '}
+                  Your account is linked to Google. To update security settings, visit your{' '}
                   <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer">
-                    myaccount.google.com
+                    Google Account
                   </a>.
                 </p>
               </div>
@@ -287,8 +300,8 @@ export default function ProfilePage() {
                 <label>Current Password</label>
                 <input
                   type="password"
-                  value={formData.currentPassword}
-                  onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                   placeholder="Enter current password"
                 />
               </div>
@@ -296,8 +309,8 @@ export default function ProfilePage() {
                 <label>New Password</label>
                 <input
                   type="password"
-                  value={formData.newPassword}
-                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                   placeholder="Min. 8 characters"
                 />
               </div>
@@ -305,8 +318,8 @@ export default function ProfilePage() {
                 <label>Confirm New Password</label>
                 <input
                   type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                   placeholder="Confirm your new password"
                 />
               </div>
@@ -316,61 +329,82 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
       </div>
 
       <style jsx>{`
-        .avatar-wrapper {
-          position: relative; display: inline-block; cursor: pointer;
-        }
+        /* ── Avatar ── */
+        .avatar-wrapper { position: relative; display: inline-block; cursor: pointer; }
         .avatar-overlay {
-          position: absolute; top:0; left:0; right:0; bottom:0;
+          position: absolute; top: 0; left: 0; right: 0; bottom: 0;
           background: rgba(0,0,0,.6); border-radius: 50%;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          opacity: 0; transition: opacity 0.3s; color: white;
+          opacity: 0; transition: opacity .3s; color: white;
         }
         .avatar-wrapper:hover .avatar-overlay { opacity: 1; }
-        .avatar-overlay i    { font-size: 1.5rem; margin-bottom: 0.25rem; }
-        .avatar-overlay span { font-size: 0.75rem; }
+        .avatar-overlay i { font-size: 1.5rem; margin-bottom: .25rem; }
+        .avatar-overlay span { font-size: .75rem; }
         .uploading-text {
-          margin-top: 0.5rem; color: var(--color-primary);
-          font-size: 0.875rem; display: flex; align-items: center; gap: 0.4rem;
+          margin-top: .5rem; color: var(--color-primary); font-size: .875rem;
+          display: flex; align-items: center; gap: .4rem;
         }
-        .avatar-hint { margin-top: 0.5rem; font-size: 0.75rem; color: var(--color-text-muted); }
-        .edit-row { display: flex; gap: 0.5rem; align-items: center; }
-        .edit-row input { flex: 1; }
-        .save-inline-btn {
-          padding: 0.45rem 0.9rem;
-          background: #06b6d4; color: white;
-          border: none; border-radius: 0.5rem;
-          cursor: pointer; font-weight: 600; font-size: 0.85rem;
-          white-space: nowrap;
+        .avatar-hint { margin-top: .5rem; font-size: .75rem; color: var(--color-text-muted); }
+
+        /* ── Username inline edit ── */
+        .field-display { display: flex; align-items: center; gap: .75rem; }
+        .field-display p { flex: 1; margin: 0; }
+        .edit-inline-btn {
+          background: none; border: none; color: var(--color-primary); cursor: pointer;
+          font-size: .85rem; padding: .2rem .4rem; border-radius: .4rem;
+          transition: background .2s;
         }
-        .save-inline-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .edit-inline-btn:hover { background: var(--color-primary-light, #e0f9ff); }
+        .inline-edit { display: flex; align-items: center; gap: .5rem; }
+        .inline-edit input {
+          flex: 1; padding: .45rem .75rem; background: var(--color-bg);
+          border: 1px solid var(--color-primary); border-radius: .5rem;
+          color: var(--color-text); font-size: .95rem; outline: none;
+        }
+        .inline-edit-actions { display: flex; gap: .35rem; }
+        .inline-save-btn {
+          width: 32px; height: 32px; border-radius: .5rem;
+          background: #10b981; border: none; color: white; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: background .2s;
+        }
+        .inline-save-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+        .inline-cancel-btn {
+          width: 32px; height: 32px; border-radius: .5rem;
+          background: var(--color-bg); border: 1px solid var(--color-border);
+          color: var(--color-text-muted); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: all .2s;
+        }
+        .inline-cancel-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+        /* ── Misc ── */
         .role-badge {
-          display: inline-block;
-          padding: 0.25rem 0.75rem;
-          background: #dbeafe; color: #1e40af;
-          border-radius: 1rem; font-size: 0.75rem; font-weight: 500;
+          display: inline-block; padding: .25rem .75rem;
+          background: #dbeafe; color: #1e40af; border-radius: 1rem;
+          font-size: .75rem; font-weight: 500;
         }
         .google-badge {
-          display: inline-flex; align-items: center; gap: 0.4rem;
-          padding: 0.25rem 0.75rem;
-          background: #fef3c7; color: #92400e;
-          border-radius: 1rem; font-size: 0.75rem; font-weight: 500;
+          display: inline-flex; align-items: center; gap: .4rem;
+          padding: .25rem .75rem; background: #fef3c7; color: #92400e;
+          border-radius: 1rem; font-size: .75rem; font-weight: 500;
         }
         .google-password-notice {
           display: flex; align-items: flex-start; gap: 1rem;
           background: #f0f9ff; border: 1px solid #bae6fd;
-          border-radius: 0.75rem; padding: 1.25rem;
+          border-radius: .75rem; padding: 1.25rem;
         }
         .notice-icon {
-          flex-shrink: 0; width: 2.5rem; height: 2.5rem;
-          border-radius: 50%; background: #dbeafe;
-          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 50%;
+          background: #dbeafe; display: flex; align-items: center; justify-content: center;
           font-size: 1.1rem; color: #1d4ed8;
         }
-        .notice-title { font-weight: 600; color: var(--color-text); margin-bottom: 0.35rem; }
-        .notice-body  { font-size: 0.875rem; color: var(--color-text-muted); line-height: 1.5; }
+        .notice-title { font-weight: 600; color: var(--color-text); margin-bottom: .35rem; }
+        .notice-body { font-size: .875rem; color: var(--color-text-muted); line-height: 1.5; }
         .notice-body a { color: #06b6d4; text-decoration: underline; }
       `}</style>
     </div>

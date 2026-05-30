@@ -6,14 +6,14 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach token to every request automatically
+// Attach token to every request 
 api.interceptors.request.use((config) => {
   const token = Cookies.get('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Handle 401 globally — log user out if token expires
+// Handle 401 globally 
 api.interceptors.response.use(
   (res) => res,
   (error) => {
