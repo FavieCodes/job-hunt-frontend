@@ -1386,3 +1386,332 @@ a:hover { text-decoration: underline; }
 .action-btn.delete:hover {
   background: #fecaca;
 }
+
+/* Fixed Modal Overlay */
+.fixed-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 999999 !important;
+  backdrop-filter: blur(8px) !important;
+  animation: fadeIn 0.2s ease-out !important;
+}
+
+/* Fixed Modal Content */
+.fixed-modal-content {
+  background: var(--color-surface) !important;
+  border-radius: 1rem !important;
+  width: 90% !important;
+  max-width: 420px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  animation: slideIn 0.3s ease-out !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  border: 1px solid var(--color-border) !important;
+}
+
+.fixed-modal-content.large {
+  max-width: 680px !important;
+}
+
+/* Modal Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Confirm Modal Specific Styles */
+.confirm-modal .confirm-job-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--color-bg);
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+}
+
+.confirm-modal .confirm-logo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #06b6d4, #1e3a8a);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: white;
+}
+
+.confirm-modal .confirm-job-title {
+  font-weight: 700;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  margin-bottom: 0.15rem;
+}
+
+.confirm-modal .confirm-company {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.confirm-modal .confirm-desc {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.confirm-modal .confirm-question {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.confirm-modal .confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.confirm-modal .btn-not-yet {
+  flex: 1;
+  padding: 0.7rem;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-radius: 0.6rem;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.2s;
+}
+
+.confirm-modal .btn-not-yet:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.confirm-modal .btn-yes-applied {
+  flex: 1;
+  padding: 0.7rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: background 0.2s;
+}
+
+.confirm-modal .btn-yes-applied:hover {
+  background: #059669;
+}
+
+/* Modal Header, Body, Footer */
+.fixed-modal-content .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.fixed-modal-content .modal-header h3 {
+  font-size: 1.1rem;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fixed-modal-content .modal-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: color 0.2s;
+}
+
+.fixed-modal-content .modal-close:hover {
+  color: var(--color-danger);
+}
+
+.fixed-modal-content .modal-body {
+  padding: 1.5rem;
+}
+
+.fixed-modal-content .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Form Grid for Add Job Modal */
+.fixed-modal-content .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.fixed-modal-content .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fixed-modal-content .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.fixed-modal-content .form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.fixed-modal-content .form-group input,
+.fixed-modal-content .form-group select,
+.fixed-modal-content .form-group textarea {
+  padding: 0.65rem 0.9rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.6rem;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.fixed-modal-content .form-group input:focus,
+.fixed-modal-content .form-group select:focus,
+.fixed-modal-content .form-group textarea:focus {
+  border-color: var(--color-primary);
+}
+
+.fixed-modal-content .form-group textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.fixed-modal-content .cancel-btn {
+  padding: 0.65rem 1.25rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.6rem;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fixed-modal-content .cancel-btn:hover {
+  background: var(--color-surface-2);
+}
+
+.fixed-modal-content .submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.fixed-modal-content .submit-btn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.fixed-modal-content .submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsive for Modals */
+@media (max-width: 768px) {
+  .fixed-modal-content .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .fixed-modal-content {
+    max-width: 95% !important;
+  }
+  
+  .confirm-modal .confirm-actions {
+    flex-direction: column;
+  }
+}
+
+/* Save Button Active State */
+.save-btn.saved i {
+  color: #06b6d4;
+}
+
+/* Header Row */
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.add-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}

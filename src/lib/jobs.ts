@@ -16,6 +16,19 @@ export interface Job {
   posted_at: string;
   scraped_at: string;
   is_active: boolean;
+  applicant_count?: number;
+  saved_count?: number;
+}
+
+export interface AddJobForm {
+  title: string; 
+  company: string; 
+  description: string;
+  country: string; 
+  city: string; 
+  job_type: string;
+  salary: string; 
+  apply_url: string;
 }
 
 export interface JobFilters {
@@ -67,7 +80,6 @@ export const jobsAPI = {
 
 // Admin Jobs API (requires admin role)
 export const adminJobsAPI = {
-  // Get all jobs with pagination (admin only)
   getAllJobs: async (filters?: { page?: number; limit?: number; is_active?: boolean; search?: string }) => {
     const params = new URLSearchParams();
     if (filters?.page) params.append('page', filters.page.toString());
