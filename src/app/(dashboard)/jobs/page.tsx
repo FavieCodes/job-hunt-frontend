@@ -23,7 +23,6 @@ function ConfirmApplyModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
- 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => {
@@ -32,8 +31,8 @@ function ConfirmApplyModal({
   }, []);
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content confirm-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed-modal-overlay" onClick={onCancel}>
+      <div className="fixed-modal-content confirm-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3><i className="fas fa-paper-plane" style={{ color: '#06b6d4' }}></i> Confirm Application</h3>
           <button onClick={onCancel} className="modal-close"><i className="fas fa-times"></i></button>
@@ -372,10 +371,10 @@ export default function JobsPage() {
         </div>
       )}
 
-      {/*Job Modal */}
+      {/* Add Job Modal */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="fixed-modal-content large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3><i className="fas fa-plus-circle"></i> Add New Job</h3>
               <button onClick={() => setShowAddModal(false)} className="modal-close"><i className="fas fa-times"></i></button>
@@ -490,50 +489,6 @@ export default function JobsPage() {
         .engagement-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .85rem; border-radius:2rem; font-size:.8rem; font-weight:600; }
         .applied-badge { background:#dbeafe; color:#1e40af; }
         .saved-badge   { background:#ede9fe; color:#6d28d9; }
-        /* Modals */
-        .modal-overlay { 
-          position:fixed; top:0;left:0;right:0;bottom:0; 
-          background:rgba(0,0,0,0.7); 
-          display:flex; align-items:center; justify-content:center; 
-          z-index:999999; 
-          padding:1rem;
-          backdrop-filter: blur(4px);
-        }
-        .modal-content { 
-          background:var(--color-surface); 
-          border-radius:1rem; 
-          width:90%; 
-          max-width:400px; 
-          box-shadow:var(--shadow-lg);
-          animation: modalSlideIn 0.2s ease-out;
-        }
-        .modal-content.large { max-width:680px; max-height:90vh; overflow-y:auto; }
-        .modal-header { display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; border-bottom:1px solid var(--color-border); }
-        .modal-header h3 { font-size:1.1rem; color:var(--color-text); display:flex; align-items:center; gap:.5rem; }
-        .modal-close { background:none; border:none; color:var(--color-text-muted); cursor:pointer; font-size:1.1rem; }
-        .modal-body { padding:1.5rem; }
-        .modal-footer { display:flex; justify-content:flex-end; gap:.75rem; padding:1rem 1.5rem; border-top:1px solid var(--color-border); }
-        .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-        .form-group { display:flex; flex-direction:column; gap:.4rem; }
-        .form-group.full-width { grid-column:1/-1; }
-        .form-group label { font-size:.85rem; font-weight:600; color:var(--color-text-muted); }
-        .form-group input,.form-group select,.form-group textarea { padding:.65rem .9rem; background:var(--color-bg); border:1px solid var(--color-border); border-radius:.6rem; color:var(--color-text); font-size:.95rem; outline:none; transition:border-color .2s; }
-        .form-group input:focus,.form-group select:focus,.form-group textarea:focus { border-color:var(--color-primary,#06b6d4); }
-        .form-group textarea { resize:vertical; font-family:inherit; }
-        .cancel-btn { padding:.65rem 1.25rem; background:var(--color-bg); border:1px solid var(--color-border); border-radius:.6rem; color:var(--color-text); cursor:pointer; }
-        .submit-btn { display:flex; align-items:center; gap:.5rem; padding:.65rem 1.5rem; background:var(--color-primary,#06b6d4); color:white; border:none; border-radius:.6rem; cursor:pointer; font-weight:600; }
-        .submit-btn:disabled { opacity:.6; cursor:not-allowed; }
-        
-        @keyframes modalSlideIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
         
         @media(max-width:768px) {
           .jobs-grid { grid-template-columns:1fr; }
