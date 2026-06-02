@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import Input from '@/components/ui/Input';
 import Spinner from '@/components/ui/Spinner';
 import GoogleButton from '@/components/auth/GoogleButton';
-import { signup, saveSession } from '@/lib/auth';
+import { signup } from '@/lib/auth';
 
 export default function SignupForm() {
   const router = useRouter();
@@ -28,10 +28,12 @@ export default function SignupForm() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const data = await signup(fields.email, fields.username, fields.password);
-      saveSession(data.token, data.user);
-      toast.success('Account created!');
-      // ✅ Redirect to "check your email" page, not directly to /jobs
+      await signup(fields.email, fields.username, fields.password);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('pendingEmail', fields.email);
+      }
+
+      toast.success('Account created! Check your inbox to confirm your email.');
       router.push('/check-email');
     } catch (err: any) {
       const msg = err.response?.data?.error ?? 'Signup failed. Please try again.';

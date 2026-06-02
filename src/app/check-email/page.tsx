@@ -1,50 +1,47 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getUser, resendConfirmation } from '@/lib/auth';
+import { resendConfirmation } from '@/lib/auth';
 import toast from 'react-hot-toast';
 
 export default function CheckEmailPage() {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail]       = useState('');
+  const [loading, setLoading]   = useState(false);
   const [canResend, setCanResend] = useState(false);
   const [countdown, setCountdown] = useState(30);
+
+  // Read the email that SignupForm stored in sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pending = sessionStorage.getItem('pendingEmail');
+      if (pending) setEmail(pending);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (canResend) return;
+    const timer = setInterval(() => setCountdown((p) => p - 1), 1000);
+    return () => clearInterval(timer);
+  }, [canResend]);
+
+  useEffect(() => {
+    if (countdown <= 0 && !canResend) setCanResend(true);
+  }, [countdown, canResend]);
 
   const handleResend = async () => {
     if (!email || !canResend) return;
     setLoading(true);
     try {
       await resendConfirmation(email);
-      toast.success('Confirmation email resent!');
+      toast.success('Confirmation email resent! Check your inbox.');
       setCanResend(false);
-      setCountdown(30);
+      setCountdown(60); 
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to resend email');
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    const user = getUser();
-    if (user?.email) setEmail(user.email);
-  }, []);
-
-  useEffect(() => {
-    if (canResend) return;
-
-    const timer = setInterval(() => {
-      setCountdown((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [canResend]);
-
-  useEffect(() => {
-    if (countdown <= 0 && !canResend) {
-      setCanResend(true);
-    }
-  }, [countdown, canResend]);
 
   return (
     <div className="check-email-page">
@@ -80,18 +77,22 @@ export default function CheckEmailPage() {
         </div>
 
         <p className="check-email-hint">
-          Can't find it? Check your spam folder.
+          Can't find it? Check your <strong>spam / junk</strong> folder.
         </p>
 
         <div className="check-email-actions" style={{ gap: '12px' }}>
-          <button 
-            type="button" 
-            className="btn btn-secondary" 
+          <button
+            type="button"
+            className="btn btn-secondary"
             style={{ display: 'inline-flex', width: 'auto' }}
             onClick={handleResend}
             disabled={!email || loading || !canResend}
           >
-            {loading ? 'Sending...' : canResend ? 'Resend Email' : `Resend in ${countdown}s`}
+            {loading
+              ? 'Sending…'
+              : canResend
+                ? 'Resend Email'
+                : `Resend in ${countdown}s`}
           </button>
           <Link href="/login" className="btn btn-primary" style={{ display: 'inline-flex', width: 'auto' }}>
             Go to Login
