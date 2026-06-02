@@ -42,11 +42,11 @@ function ConfirmApplyModal({
 }
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  'full-time':  { bg: '#d1fae5', text: '#065f46' },
-  'part-time':  { bg: '#fef3c7', text: '#92400e' },
-  'remote':     { bg: '#e0f2fe', text: '#0c4a6e' },
-  'contract':   { bg: '#ede9fe', text: '#4c1d95' },
-  'internship': { bg: '#fee2e2', text: '#7f1d1d' },
+  'full-time':  { bg: '#40d689ff', text: '#065f46' },
+  'part-time':  { bg: '#af9c50ff', text: '#92400e' },
+  'remote':     { bg: '#2e7cb0ff', text: '#0c4a6e' },
+  'contract':   { bg: '#513fa0ff', text: '#4c1d95' },
+  'internship': { bg: '#cd4444ff', text: '#7f1d1d' },
 };
 
 export default function JobDetailPage() {

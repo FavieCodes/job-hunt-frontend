@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { getUser, logout } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
+import Cookies from 'js-cookie';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router   = useRouter();
@@ -19,6 +20,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userData = getUser();
     if (!userData) { router.push('/login'); return; }
     setUser(userData);
+    api.get('/user/profile')
+      .then(({ data }) => {
+        if (data.avatar || data.username) {
+          const updated = { ...userData, ...data };
+          Cookies.set('user', JSON.stringify(updated), { expires: 7 });
+          setUser(updated);
+        }
+      })
+      .catch(() => {});
 
     const saved = localStorage.getItem('theme');
     if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -27,7 +37,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [router]);
 
-  // Close settings dropdown when clicking outside
   useEffect(() => {
     const close = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -83,10 +92,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: '/jobs',         icon: 'fa-briefcase',      label: 'Jobs' },
         { href: '/scholarships', icon: 'fa-graduation-cap', label: 'Scholarships' },
         { href: '/applications', icon: 'fa-file-alt',       label: 'My Applications' },
-        { href: '/saved',        icon: 'fa-bookmark',       label: 'Saved Jobs' },
+        { href: '/saved',        icon: 'fa-bookmark',       label: 'Saved Items' },
         { href: '/interview',    icon: 'fa-comments',       label: 'Interview Prep' },
         { href: '/resume',       icon: 'fa-file-alt',       label: 'Resume Builder' },
       ];
+
+  const avatarSrc =
+    user?.avatar ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=06b6d4&color=fff`;
 
   return (
     <div className={`dashboard-container ${isDarkMode ? 'dark' : ''}`}>
@@ -161,8 +174,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="top-bar-actions">
-            {/* Dark mode toggle REMOVED from top bar — now lives inside settings dropdown */}
-
             <div className="settings-dropdown">
               <button
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -178,7 +189,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <i className="fas fa-user-circle"></i> My Profile
                   </Link>
 
-                  {/* Dark / Light mode toggle inside settings */}
                   <button className="dropdown-item" onClick={toggleDarkMode}>
                     <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
                     {isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
@@ -193,12 +203,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </div>
 
-            <Link href="/profile" className="user-avatar">
+            <Link href="/profile" className="user-avatar" title="My Profile">
               <img
-                src={
-                  user?.avatar ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=06b6d4&color=fff`
-                }
+                key={avatarSrc}
+                src={avatarSrc}
                 alt={user?.username}
               />
             </Link>
