@@ -11,7 +11,7 @@ import { signup } from '@/lib/auth';
 export default function SignupForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [fields, setFields] = useState({ email: '', username: '', password: '' });
+  const [fields, setFields] = useState({ email: '', username: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -19,6 +19,11 @@ export default function SignupForm() {
     if (!fields.email.includes('@')) e.email = 'Enter a valid email address';
     if (fields.username.length < 3) e.username = 'Username must be at least 3 characters';
     if (fields.password.length < 8) e.password = 'Password must be at least 8 characters';
+    if (!fields.confirmPassword) {
+      e.confirmPassword = 'Please confirm your password';
+    } else if (fields.password !== fields.confirmPassword) {
+      e.confirmPassword = 'Passwords do not match';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -67,6 +72,11 @@ export default function SignupForm() {
           id="password" label="Password" showPasswordToggle showStrength
           value={fields.password} onChange={set('password')} error={errors.password}
           placeholder="Min. 8 characters" autoComplete="new-password"
+        />
+        <Input
+          id="confirmPassword" label="Confirm Password" showPasswordToggle
+          value={fields.confirmPassword} onChange={set('confirmPassword')} error={errors.confirmPassword}
+          placeholder="Re-enter your password" autoComplete="new-password"
         />
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? <Spinner /> : null}

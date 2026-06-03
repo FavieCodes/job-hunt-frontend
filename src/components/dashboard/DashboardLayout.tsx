@@ -42,34 +42,36 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
     router.push('/login');
   };
 
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
   return (
     <div className={`dashboard-container ${isDarkMode ? 'dark' : ''}`}>
       {/* Sidebar */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
+          <button className="mobile-close" onClick={closeMobileMenu}>
+            <i className="fas fa-times"></i>
+          </button>
           <div className="logo">
             <i className="fas fa-briefcase"></i>
             <span>Job<span>Hunt</span></span>
           </div>
-          <button className="mobile-close" onClick={() => setIsMobileMenuOpen(false)}>
-            <i className="fas fa-times"></i>
-          </button>
         </div>
 
         <nav className="sidebar-nav">
-          <Link href="/jobs" className="nav-item active">
+          <Link href="/jobs" className="nav-item active" onClick={closeMobileMenu}>
             <i className="fas fa-home"></i>
             <span>Dashboard</span>
           </Link>
-          <Link href="/applications" className="nav-item">
+          <Link href="/applications" className="nav-item" onClick={closeMobileMenu}>
             <i className="fas fa-file-alt"></i>
             <span>My Applications</span>
           </Link>
-          <Link href="/saved" className="nav-item">
+          <Link href="/saved" className="nav-item" onClick={closeMobileMenu}>
             <i className="fas fa-bookmark"></i>
             <span>Saved Jobs</span>
           </Link>
-          <Link href="/profile" className="nav-item">
+          <Link href="/profile" className="nav-item" onClick={closeMobileMenu}>
             <i className="fas fa-user"></i>
             <span>Profile</span>
           </Link>
@@ -137,7 +139,7 @@ export default function DashboardLayout({ children, user }: DashboardLayoutProps
       </main>
 
       {/* Overlay for mobile */}
-      {isMobileMenuOpen && <div className="mobile-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>}
+      {isMobileMenuOpen && <div className="mobile-overlay" onClick={closeMobileMenu}></div>}
     </div>
   );
 }
