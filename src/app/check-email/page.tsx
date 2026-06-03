@@ -17,7 +17,7 @@ export default function CheckEmailPage() {
       if (pending) setEmail(pending);
     }
   }, []);
-
+  // Countdown before allowing resend
   useEffect(() => {
     if (canResend) return;
     const timer = setInterval(() => setCountdown((p) => p - 1), 1000);
@@ -35,7 +35,7 @@ export default function CheckEmailPage() {
       await resendConfirmation(email);
       toast.success('Confirmation email resent! Check your inbox.');
       setCanResend(false);
-      setCountdown(60); 
+      setCountdown(60);
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to resend email');
     } finally {
