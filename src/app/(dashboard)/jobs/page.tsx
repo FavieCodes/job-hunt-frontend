@@ -8,10 +8,90 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import type { Job, AddJobForm } from '@/lib/jobs';
 
+const JOBS_PER_PAGE = 12;
+
 const emptyForm: AddJobForm = {
   title: '', company: '', description: '', country: '',
   city: '', job_type: 'full-time', salary: '', apply_url: '',
 };
+
+// ── Pagination component ──────────────────────────────────────────────────────
+function Pagination({
+  currentPage,
+  totalPages,
+  totalItems,
+  itemsPerPage,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  // Build page number array with ellipsis logic
+  const getPages = () => {
+    const pages: (number | '...')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end   = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  const from = (currentPage - 1) * itemsPerPage + 1;
+  const to   = Math.min(currentPage * itemsPerPage, totalItems);
+
+  return (
+    <div className="pagination-wrapper">
+      <p className="pagination-info">
+        Showing <strong>{from}–{to}</strong> of <strong>{totalItems}</strong> jobs
+      </p>
+      <div className="pagination">
+        <button
+          className="page-btn page-btn-arrow"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          aria-label="Previous page"
+        >
+          <i className="fas fa-chevron-left"></i>
+        </button>
+
+        {getPages().map((p, i) =>
+          p === '...' ? (
+            <span key={`ellipsis-${i}`} className="page-ellipsis">…</span>
+          ) : (
+            <button
+              key={p}
+              className={`page-btn page-num ${p === currentPage ? 'active' : ''}`}
+              onClick={() => onPageChange(p as number)}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        <button
+          className="page-btn page-btn-arrow"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          aria-label="Next page"
+        >
+          <i className="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── Confirm-Apply Modal ───────────────────────────────────────────────────────
 function ConfirmApplyModal({
@@ -25,9 +105,7 @@ function ConfirmApplyModal({
 }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, []);
 
   return (
@@ -45,9 +123,7 @@ function ConfirmApplyModal({
               <p className="confirm-company">{job.company || 'Company'}</p>
             </div>
           </div>
-          <p className="confirm-desc">
-            You were redirected to the external application page.
-          </p>
+          <p className="confirm-desc">You were redirected to the external application page.</p>
           <p className="confirm-question">
             <i className="fas fa-question-circle" style={{ color: '#06b6d4' }}></i>
             &nbsp;Did you complete your application on that site?
@@ -66,27 +142,23 @@ function ConfirmApplyModal({
   );
 }
 
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function JobsPage() {
-  const [jobs, setJobs]             = useState<Job[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [filters, setFilters]       = useState({ country: '', job_type: '', q: '', page: 1 });
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalJobs, setTotalJobs]   = useState(0);
+  const [jobs, setJobs]               = useState<Job[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [filters, setFilters]         = useState({ country: '', job_type: '', q: '', page: 1 });
+  const [totalPages, setTotalPages]   = useState(1);
+  const [totalJobs, setTotalJobs]     = useState(0);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
-  const [savedJobs, setSavedJobs]   = useState<Set<string>>(new Set());
-  const [savingId, setSavingId]     = useState<string | null>(null);
-  const [user, setUser]             = useState<any>(null);
+  const [savedJobs, setSavedJobs]     = useState<Set<string>>(new Set());
+  const [savingId, setSavingId]       = useState<string | null>(null);
+  const [user, setUser]               = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm]       = useState<AddJobForm>(emptyForm);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Confirm-apply state
+  const [addForm, setAddForm]         = useState<AddJobForm>(emptyForm);
+  const [submitting, setSubmitting]   = useState(false);
   const [pendingApply, setPendingApply] = useState<Job | null>(null);
 
-  useEffect(() => {
-    const userData = getUser();
-    setUser(userData);
-  }, []);
+  useEffect(() => { setUser(getUser()); }, []);
 
   useEffect(() => {
     fetchJobs();
@@ -108,12 +180,12 @@ export default function JobsPage() {
     setLoading(true);
     try {
       if (isAdmin) {
-        const data = await adminJobsAPI.getAllJobs({ page: filters.page, limit: 20, search: filters.q });
+        const data = await adminJobsAPI.getAllJobs({ page: filters.page, limit: JOBS_PER_PAGE, search: filters.q });
         setJobs(data.jobs || []);
         setTotalPages(data.pages || 1);
         setTotalJobs(data.total || 0);
       } else {
-        const data = await jobsAPI.searchJobs(filters);
+        const data = await jobsAPI.searchJobs({ ...filters, limit: JOBS_PER_PAGE });
         setJobs(data.jobs || []);
         setTotalPages(data.pages || 1);
         setTotalJobs(data.total || 0);
@@ -140,9 +212,7 @@ export default function JobsPage() {
   };
 
   const handleApplyClick = (job: Job) => {
-    if (job.apply_url) {
-      window.open(job.apply_url, '_blank', 'noopener,noreferrer');
-    }
+    if (job.apply_url) window.open(job.apply_url, '_blank', 'noopener,noreferrer');
     setTimeout(() => setPendingApply(job), 400);
   };
 
@@ -195,6 +265,11 @@ export default function JobsPage() {
     }
   };
 
+  const handlePageChange = (page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const getTypeColor = (type: string) => ({
     'full-time': '#8fe3c7ff', 'part-time': '#c0baafff',
     'remote': '#aadfe8ff', 'contract': '#a88beaff', 'internship': '#ef4444',
@@ -203,7 +278,6 @@ export default function JobsPage() {
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-      {/* Confirm-apply modal */}
       {pendingApply && (
         <ConfirmApplyModal
           job={pendingApply}
@@ -270,7 +344,7 @@ export default function JobsPage() {
       {/* Jobs grid */}
       {loading ? (
         <div className="jobs-grid">
-          {[1,2,3,4,5,6].map((i) => (
+          {Array.from({ length: JOBS_PER_PAGE }).map((_, i) => (
             <div key={i} className="skeleton-card">
               <div className="skeleton-title"></div>
               <div className="skeleton-text"></div>
@@ -359,17 +433,13 @@ export default function JobsPage() {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="pagination">
-          <button onClick={() => setFilters({ ...filters, page: filters.page - 1 })} disabled={filters.page === 1} className="page-btn">
-            <i className="fas fa-chevron-left"></i> Previous
-          </button>
-          <span className="page-info">Page {filters.page} of {totalPages}</span>
-          <button onClick={() => setFilters({ ...filters, page: filters.page + 1 })} disabled={filters.page === totalPages} className="page-btn">
-            Next <i className="fas fa-chevron-right"></i>
-          </button>
-        </div>
-      )}
+      <Pagination
+        currentPage={filters.page}
+        totalPages={totalPages}
+        totalItems={totalJobs}
+        itemsPerPage={JOBS_PER_PAGE}
+        onPageChange={handlePageChange}
+      />
 
       {/* Add Job Modal */}
       {showAddModal && (
@@ -382,12 +452,12 @@ export default function JobsPage() {
             <div className="modal-body">
               <div className="form-grid">
                 {[
-                  { label: 'Job Title *', key: 'title', placeholder: 'e.g. Senior Backend Engineer' },
-                  { label: 'Company', key: 'company', placeholder: 'e.g. Acme Corp' },
-                  { label: 'Country', key: 'country', placeholder: 'e.g. Nigeria' },
-                  { label: 'City', key: 'city', placeholder: 'e.g. Lagos' },
-                  { label: 'Salary', key: 'salary', placeholder: 'e.g. $80,000/yr' },
-                  { label: 'Apply URL', key: 'apply_url', placeholder: 'https://…', type: 'url' },
+                  { label: 'Job Title *', key: 'title',    placeholder: 'e.g. Senior Backend Engineer' },
+                  { label: 'Company',     key: 'company',  placeholder: 'e.g. Acme Corp' },
+                  { label: 'Country',     key: 'country',  placeholder: 'e.g. Nigeria' },
+                  { label: 'City',        key: 'city',     placeholder: 'e.g. Lagos' },
+                  { label: 'Salary',      key: 'salary',   placeholder: 'e.g. $80,000/yr' },
+                  { label: 'Apply URL',   key: 'apply_url', placeholder: 'https://…', type: 'url' },
                 ].map(({ label, key, placeholder, type }) => (
                   <div className="form-group" key={key}>
                     <label>{label}</label>
@@ -489,7 +559,72 @@ export default function JobsPage() {
         .engagement-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .85rem; border-radius:2rem; font-size:.8rem; font-weight:600; }
         .applied-badge { background:#dbeafe; color:#1e40af; }
         .saved-badge   { background:#ede9fe; color:#6d28d9; }
-        
+
+        /* ── Pagination ──────────────────────────────────────────────────── */
+        .pagination-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.75rem;
+          margin-top: 2rem;
+          padding-bottom: 2rem;
+        }
+        .pagination-info {
+          font-size: 0.875rem;
+          color: var(--color-text-muted);
+          margin: 0;
+        }
+        .pagination {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+        .page-btn {
+          min-width: 38px;
+          height: 38px;
+          padding: 0 0.6rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: 0.5rem;
+          cursor: pointer;
+          color: var(--color-text);
+          font-size: 0.875rem;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) {
+          background: var(--color-primary);
+          color: white;
+          border-color: var(--color-primary);
+        }
+        .page-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        .page-btn.active {
+          background: var(--color-primary);
+          color: white;
+          border-color: var(--color-primary);
+          font-weight: 700;
+        }
+        .page-btn-arrow {
+          font-size: 0.75rem;
+        }
+        .page-ellipsis {
+          min-width: 38px;
+          height: 38px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--color-text-muted);
+          font-size: 1rem;
+        }
+
         @media(max-width:768px) {
           .jobs-grid { grid-template-columns:1fr; }
           .filter-group { flex-direction:column; }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
 import GoogleProvider from '@/components/auth/GoogleProvider';
+import StyledJsxRegistry from './registry';
 
 export const metadata: Metadata = {
   title: 'JobHunt — Find Your Next Role',
@@ -22,9 +23,11 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <GoogleProvider>
-          {children}
-        </GoogleProvider>
+        <StyledJsxRegistry>
+          <GoogleProvider>
+            {children}
+          </GoogleProvider>
+        </StyledJsxRegistry>
         <Toaster
           position="top-right"
           toastOptions={{

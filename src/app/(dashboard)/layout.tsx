@@ -20,6 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userData = getUser();
     if (!userData) { router.push('/login'); return; }
     setUser(userData);
+
     api.get('/user/profile')
       .then(({ data }) => {
         if (data.avatar || data.username) {
@@ -37,6 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [router]);
 
+  // Close settings dropdown when clicking outside
   useEffect(() => {
     const close = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -45,6 +47,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, []);
+
+  // Close mobile sidebar whenever the route changes
+  useEffect(() => {
+    setMobileMenu(false);
+  }, [pathname]);
 
   const toggleDarkMode = () => {
     const next = !isDarkMode;
@@ -103,26 +110,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className={`dashboard-container ${isDarkMode ? 'dark' : ''}`}>
-      {/* Sidebar */}
+
+      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-        <div className="sidebar-header">
+
+        {/* Header row: logo + close button */}
+        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" className="logo" style={{ textDecoration: 'none' }}>
             <i className="fas fa-briefcase"></i>
             <span>Job<span>Hunt</span></span>
           </Link>
-          {isMobileMenuOpen && (
-            <button className="mobile-close" onClick={() => setMobileMenu(false)}>
-              <i className="fas fa-times"></i>
-            </button>
-          )}
+
+          {/* Close button */}
+          <button
+            className="mobile-close-btn"
+            onClick={() => setMobileMenu(false)}
+            aria-label="Close menu"
+          >
+            <i className="fas fa-times"></i>
+          </button>
         </div>
 
+        {/* Nav links — each closes the sidebar on mobile via the pathname effect */}
         <nav className="sidebar-nav">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={`nav-item ${pathname === item.href ? 'active' : ''}`}
+              onClick={() => setMobileMenu(false)}
             >
               <i className={`fas ${item.icon}`}></i>
               <span>{item.label}</span>
@@ -152,7 +168,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* ── Main Content ─────────────────────────────────────────────────── */}
       <main className="main-content">
         <header className="top-bar">
           <button className="mobile-menu-btn" onClick={() => setMobileMenu(true)}>
@@ -188,15 +204,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Link href="/profile" className="dropdown-item" onClick={() => setIsSettingsOpen(false)}>
                     <i className="fas fa-user-circle"></i> My Profile
                   </Link>
-
                   <button className="dropdown-item" onClick={toggleDarkMode}>
                     <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
                     {isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                   </button>
-
                   <hr />
-
-                  <button onClick={() => { handleLogout(); setIsSettingsOpen(false); }} className="dropdown-item logout-item">
+                  <button
+                    onClick={() => { handleLogout(); setIsSettingsOpen(false); }}
+                    className="dropdown-item logout-item"
+                  >
                     <i className="fas fa-sign-out-alt"></i> Logout
                   </button>
                 </div>
@@ -204,11 +220,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
 
             <Link href="/profile" className="user-avatar" title="My Profile">
-              <img
-                key={avatarSrc}
-                src={avatarSrc}
-                alt={user?.username}
-              />
+              <img key={avatarSrc} src={avatarSrc} alt={user?.username} />
             </Link>
           </div>
         </header>
@@ -216,9 +228,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="page-content">{children}</div>
       </main>
 
+      {/* ── Mobile overlay — tap outside to close ────────────────────────── */}
       {isMobileMenuOpen && (
         <div className="mobile-overlay" onClick={() => setMobileMenu(false)}></div>
       )}
+
+      {/* ── Scoped styles for the close button ───────────────────────────── */}
+      <style jsx global>{`
+        /* Hide close btn on desktop; show on mobile */
+        .mobile-close-btn {
+          display: none;
+          background: none;
+          border: 2px solid var(--color-border);
+          border-radius: 0.5rem;
+          width: 36px;
+          height: 36px;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: var(--color-text);
+          font-size: 1.1rem;
+          font-weight: 900;
+          transition: background 0.2s, color 0.2s, border-color 0.2s;
+          flex-shrink: 0;
+        }
+        .mobile-close-btn:hover {
+          background: var(--color-danger-light, #fee2e2);
+          color: var(--color-danger, #ef4444);
+          border-color: var(--color-danger, #ef4444);
+        }
+        .mobile-close-btn .fas.fa-times {
+          font-weight: 900;
+          font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+          .mobile-close-btn {
+            display: flex;
+          }
+          /* Give the logo and close button breathing room */
+          .sidebar-header {
+            gap: 1rem;
+          }
+        }
+      `}</style>
     </div>
   );
 }

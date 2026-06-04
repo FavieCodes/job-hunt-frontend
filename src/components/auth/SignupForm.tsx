@@ -11,7 +11,12 @@ import { signup } from '@/lib/auth';
 export default function SignupForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [fields, setFields] = useState({ email: '', username: '', password: '', confirmPassword: '' });
+  const [fields, setFields] = useState({
+    email: '',
+    username: '',
+    password: '',
+    confirmPassword: '',
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
@@ -34,11 +39,11 @@ export default function SignupForm() {
     setLoading(true);
     try {
       await signup(fields.email, fields.username, fields.password);
-      if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined') {
         sessionStorage.setItem('pendingEmail', fields.email);
       }
 
-      toast.success('Account created! Check your inbox to confirm your email.');
+      toast.success('Account created! Please check your inbox to confirm your email.');
       router.push('/check-email');
     } catch (err: any) {
       const msg = err.response?.data?.error ?? 'Signup failed. Please try again.';
@@ -59,24 +64,45 @@ export default function SignupForm() {
 
       <form onSubmit={handleSubmit} noValidate>
         <Input
-          id="email" label="Email address" type="email"
-          value={fields.email} onChange={set('email')} error={errors.email}
-          placeholder="you@example.com" autoComplete="email"
+          id="email"
+          label="Email address"
+          type="email"
+          value={fields.email}
+          onChange={set('email')}
+          error={errors.email}
+          placeholder="you@example.com"
+          autoComplete="email"
         />
         <Input
-          id="username" label="Username" type="text"
-          value={fields.username} onChange={set('username')} error={errors.username}
-          placeholder="johndoe" autoComplete="username"
+          id="username"
+          label="Username"
+          type="text"
+          value={fields.username}
+          onChange={set('username')}
+          error={errors.username}
+          placeholder="johndoe"
+          autoComplete="username"
         />
         <Input
-          id="password" label="Password" showPasswordToggle showStrength
-          value={fields.password} onChange={set('password')} error={errors.password}
-          placeholder="Min. 8 characters" autoComplete="new-password"
+          id="password"
+          label="Password"
+          showPasswordToggle
+          showStrength
+          value={fields.password}
+          onChange={set('password')}
+          error={errors.password}
+          placeholder="Min. 8 characters"
+          autoComplete="new-password"
         />
         <Input
-          id="confirmPassword" label="Confirm Password" showPasswordToggle
-          value={fields.confirmPassword} onChange={set('confirmPassword')} error={errors.confirmPassword}
-          placeholder="Re-enter your password" autoComplete="new-password"
+          id="confirmPassword"
+          label="Confirm Password"
+          showPasswordToggle
+          value={fields.confirmPassword}
+          onChange={set('confirmPassword')}
+          error={errors.confirmPassword}
+          placeholder="Re-enter your password"
+          autoComplete="new-password"
         />
         <button type="submit" className="btn btn-primary" disabled={loading}>
           {loading ? <Spinner /> : null}
