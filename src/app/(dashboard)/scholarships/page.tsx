@@ -1,31 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { scholarshipsAPI, adminScholarshipsAPI, userAPI } from '@/lib';
+import { scholarshipsAPI, adminScholarshipsAPI, userAPI, Scholarship, AddScholarshipForm } from '@/lib';
 import { getUser } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
 const SCHOLARSHIPS_PER_PAGE = 10;
-
-interface Scholarship {
-  id: string;
-  title: string;
-  provider: string;
-  description: string;
-  country: string;
-  field: string;
-  deadline: string;
-  amount: string;
-  apply_url: string;
-  applicant_count?: number;
-  saved_count?: number;
-}
-
-interface AddScholarshipForm {
-  title: string; provider: string; description: string;
-  country: string; field: string; deadline: string;
-  amount: string; apply_url: string;
-}
 
 const emptyForm: AddScholarshipForm = {
   title: '', provider: '', description: '', country: '',

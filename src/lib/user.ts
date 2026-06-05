@@ -14,8 +14,20 @@ export interface User {
 export interface Application {
   id: string;
   job_id: string;
-  status: 'pending' | 'reviewed' | 'accepted' | 'rejected';
+  scholarship_id?: string;
+  application_type?: 'job' | 'scholarship' | 'manual';
+  status: 'pending' | 'reviewed' | 'accepted' | 'rejected' | 'withdrawn';
   created_at: string;
+ 
+  title?: string;
+  company?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  job_type?: string;
+  salary?: string;
+  apply_url?: string;
+  posted_at?: string;
   job?: Job;
 }
 
@@ -25,6 +37,27 @@ export interface ApplicationStats {
   reviewed: number;
   accepted: number;
   rejected: number;
+}
+
+export type ItemType = 'job' | 'scholarship';
+
+export interface SavedItem {
+  id: string;
+  title: string;
+  company?: string;
+  job_type?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  salary?: string;
+  apply_url?: string;
+  description?: string;
+  provider?: string;
+  field?: string;
+  deadline?: string;
+  amount?: string;
+  saved_at: string;
+  item_type: ItemType;
 }
 
 export const userAPI = {
@@ -38,6 +71,8 @@ export const userAPI = {
     return data;
   },
 
+  // ── Applications ────────────────────────────────────────────────────────────
+
   getApplications: async (): Promise<Application[]> => {
     const { data } = await api.get<Application[]>('/user/applications');
     return data;
@@ -48,55 +83,74 @@ export const userAPI = {
     return data;
   },
 
- 
-  confirmApplication: async (jobId: string): Promise<Application> => {
-    const { data } = await api.post<Application>('/user/applications/confirm', { job_id: jobId });
+  applyForScholarship: async (scholarshipId: string): Promise<Application> => {
+    const { data } = await api.post<Application>('/user/applications', {
+      scholarship_id: scholarshipId,
+    });
     return data;
   },
 
+  /** Add a manual application */
+  addManualApplication: async (payload: {
+    title: string;
+    company: string;
+    apply_url?: string;
+    location?: string;
+    job_type?: string;
+    notes?: string;
+  }): Promise<Application> => {
+    const { data } = await api.post<Application>('/user/applications/manual', payload);
+    return data;
+  },
+
+  /** Update application status */
+  updateApplicationStatus: async (
+    applicationId: string,
+    status: Application['status']
+  ): Promise<Application> => {
+    const { data } = await api.patch<Application>(`/user/applications/${applicationId}/status`, {
+      status,
+    });
+    return data;
+  },
+
+  // ── Saved Jobs ──────────────────────────────────────────────────────────────
+
   getSavedJobs: async (): Promise<Job[]> => {
-    const { data } = await api.get<Job[]>('/user/saved');
+    const { data } = await api.get<Job[]>('/user/saved/jobs');
     return data;
   },
 
   saveJob: async (jobId: string): Promise<{ message: string }> => {
-    const { data } = await api.post('/user/saved', { job_id: jobId });
+    const { data } = await api.post('/user/saved/jobs', { job_id: jobId });
     return data;
   },
 
   removeSavedJob: async (jobId: string): Promise<{ message: string }> => {
-    const { data } = await api.delete(`/user/saved/${jobId}`);
+    const { data } = await api.delete(`/user/saved/jobs/${jobId}`);
     return data;
   },
 
+  // ── Saved ScholarshipsI ──────────────
+
   getSavedScholarships: async (): Promise<any[]> => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = JSON.parse(localStorage.getItem('saved_scholarships') || '[]');
-      return saved.map((id: string) => ({ id }));
-    } catch { return []; }
+    const { data } = await api.get('/user/saved/scholarships');
+    return data;
   },
 
   saveScholarship: async (scholarshipId: string): Promise<{ message: string }> => {
-    if (typeof window !== 'undefined') {
-      const saved = JSON.parse(localStorage.getItem('saved_scholarships') || '[]');
-      if (!saved.includes(scholarshipId)) {
-        saved.push(scholarshipId);
-        localStorage.setItem('saved_scholarships', JSON.stringify(saved));
-      }
-    }
-    return { message: 'Saved' };
+    const { data } = await api.post('/user/saved/scholarships', {
+      scholarship_id: scholarshipId,
+    });
+    return data;
   },
 
   removeSavedScholarship: async (scholarshipId: string): Promise<{ message: string }> => {
-    if (typeof window !== 'undefined') {
-      let saved = JSON.parse(localStorage.getItem('saved_scholarships') || '[]');
-      saved = saved.filter((id: string) => id !== scholarshipId);
-      localStorage.setItem('saved_scholarships', JSON.stringify(saved));
-    }
-    return { message: 'Removed' };
+    const { data } = await api.delete(`/user/saved/scholarships/${scholarshipId}`);
+    return data;
   },
 
+  // ── Stats ────────────────────────────────────────────────────────────────────
 
   getApplicationStats: async (): Promise<ApplicationStats> => {
     const { data } = await api.get<ApplicationStats>('/user/stats');

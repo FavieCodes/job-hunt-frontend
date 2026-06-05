@@ -4,29 +4,7 @@ import api from '@/lib/api';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
-type ItemType = 'job' | 'scholarship';
-
-interface SavedItem {
-  id: string;
-  title: string;
-  // job fields
-  company?: string;
-  job_type?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  salary?: string;
-  apply_url?: string;
-  description?: string;
-  // scholarship fields
-  provider?: string;
-  field?: string;
-  deadline?: string;
-  amount?: string;
-  // common
-  saved_at: string;
-  item_type: ItemType;
-}
+import { ItemType, SavedItem } from '@/lib';
 
 const JOB_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   'full-time':  { bg: '#d1fae5', text: '#065f46' },

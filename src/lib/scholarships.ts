@@ -14,6 +14,14 @@ export interface Scholarship {
   posted_at: string;
   scraped_at: string;
   is_active: boolean;
+  applicant_count?: number;
+  saved_count?: number;
+}
+
+export interface AddScholarshipForm {
+  title: string; provider: string; description: string;
+  country: string; field: string; deadline: string;
+  amount: string; apply_url: string;
 }
 
 export interface ScholarshipFilters {
@@ -32,7 +40,7 @@ export interface ScholarshipSearchResponse {
 }
 
 export const scholarshipsAPI = {
-  // Search scholarships with filters
+
   searchScholarships: async (filters: ScholarshipFilters = {}): Promise<ScholarshipSearchResponse> => {
     const params = new URLSearchParams();
     if (filters.country) params.append('country', filters.country);
@@ -57,9 +65,8 @@ export const scholarshipsAPI = {
   },
 };
 
-// Admin Scholarships API (requires admin role)
+// Admin Scholarships API 
 export const adminScholarshipsAPI = {
-  // Get all scholarships with pagination (admin only)
   getAllScholarships: async (filters?: { page?: number; limit?: number; is_active?: boolean; search?: string }) => {
     const params = new URLSearchParams();
     if (filters?.page) params.append('page', filters.page.toString());

@@ -5,3 +5,4 @@ export * from './scholarships';
 export * from './user';
 export * from './admin';
 export * from './scraper';
+export * from './resume';
