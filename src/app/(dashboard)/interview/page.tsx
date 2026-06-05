@@ -252,7 +252,7 @@ export default function InterviewPrepPage() {
               <div className="prep-results">
                 <div className="results-header">
                   <div>
-                    <h2>{result.job_role}</h2>
+                    <h2 className="job-role-title">{result.job_role}</h2>
                     <span className="results-badge">{result.interview_type} Interview</span>
                   </div>
                   <button className="reset-btn" onClick={() => setResult(null)}>
@@ -324,10 +324,10 @@ export default function InterviewPrepPage() {
                 return (
                   <div key={item.id} className="history-card" onClick={() => loadFromHistory(item)}>
                     <div className="history-card-top">
-                      <h4>{item.job_role}</h4>
-                      <span className="results-badge">{item.interview_type}</span>
+                      <h4 className="history-job-role">{item.job_role}</h4>
+                      <span className="history-type-badge">{item.interview_type}</span>
                     </div>
-                    <p className="history-preview">{qs[0]?.question?.slice(0, 90)}…</p>
+                    <p className="history-preview">{qs[0]?.question?.slice(0, 80)}…</p>
                     <div className="history-meta">
                       <span><i className="fas fa-question-circle"></i> {qs.length} questions</span>
                       <span><i className="fas fa-clock"></i> {new Date(item.created_at).toLocaleDateString()}</span>
@@ -462,7 +462,16 @@ export default function InterviewPrepPage() {
           display: flex; justify-content: space-between; align-items: flex-start;
           margin-bottom: 1.25rem; gap: 1rem;
         }
-        .results-header h2 { font-size: 1.3rem; color: var(--color-text); margin-bottom: .4rem; }
+        .results-header h2 { 
+          font-size: 1.3rem; 
+          color: var(--color-text); 
+          margin-bottom: .4rem;
+          word-break: break-word;
+        }
+        .job-role-title {
+          word-break: break-word;
+          max-width: 100%;
+        }
         .results-badge {
           display: inline-block; padding: .25rem .75rem;
           background: #e0f9ff; color: #0e7490;
@@ -494,15 +503,20 @@ export default function InterviewPrepPage() {
           display: flex; align-items: center; justify-content: center;
           font-size: .75rem; font-weight: 700;
         }
-        .q-text { flex: 1; font-size: .9rem; line-height: 1.4; }
-        .question-header .fa-chevron-up, .question-header .fa-chevron-down { color: var(--color-text-muted); font-size: .8rem; }
+        .q-text { 
+          flex: 1; 
+          font-size: .9rem; 
+          line-height: 1.4; 
+          word-break: break-word;
+        }
+        .question-header .fa-chevron-up, .question-header .fa-chevron-down { color: var(--color-text-muted); font-size: .8rem; flex-shrink: 0; }
         .question-tip {
           display: flex; align-items: flex-start; gap: .65rem;
           padding: .85rem 1rem; background: #f0fdf4;
           border-top: 1px solid #bbf7d0;
         }
         .question-tip i { color: #16a34a; font-size: 1rem; margin-top: .1rem; flex-shrink: 0; }
-        .question-tip p { font-size: .875rem; color: #166534; line-height: 1.5; margin: 0; }
+        .question-tip p { font-size: .875rem; color: #166534; line-height: 1.5; margin: 0; word-break: break-word; }
 
         /* Videos */
         .videos-list { display: flex; flex-direction: column; gap: .5rem; }
@@ -518,25 +532,86 @@ export default function InterviewPrepPage() {
           background: #fee2e2; display: flex; align-items: center; justify-content: center;
           color: #ef4444; font-size: 1rem; flex-shrink: 0;
         }
-        .video-info { flex: 1; display: flex; flex-direction: column; gap: .15rem; }
-        .video-title { font-size: .9rem; font-weight: 600; color: var(--color-text); }
+        .video-info { flex: 1; display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
+        .video-title { 
+          font-size: .9rem; 
+          font-weight: 600; 
+          color: var(--color-text); 
+          word-break: break-word;
+          overflow-wrap: break-word;
+        }
         .video-url   { font-size: .75rem; color: var(--color-text-muted); }
-        .video-ext   { color: var(--color-text-muted); font-size: .8rem; }
+        .video-ext   { color: var(--color-text-muted); font-size: .8rem; flex-shrink: 0; }
 
-        /* History */
+        /* History - Fixed for text overflow */
         .history-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; }
-        .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
         .history-card {
           background: var(--color-bg); border: 1px solid var(--color-border);
           border-radius: .75rem; padding: 1.25rem; cursor: pointer;
           transition: all .2s;
+          display: flex; flex-direction: column;
+          min-width: 0; /* Allows text truncation */
         }
         .history-card:hover { border-color: var(--color-primary, #06b6d4); transform: translateY(-2px); }
-        .history-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; margin-bottom: .6rem; }
-        .history-card h4 { font-size: .95rem; color: var(--color-text); margin: 0; }
-        .history-preview { font-size: .82rem; color: var(--color-text-muted); line-height: 1.45; margin-bottom: .75rem; }
-        .history-meta { display: flex; gap: 1rem; font-size: .78rem; color: var(--color-text-muted); }
-        .history-meta span { display: flex; align-items: center; gap: .3rem; }
+        .history-card-top { 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: flex-start; 
+          gap: .5rem; 
+          margin-bottom: .6rem;
+          min-width: 0;
+        }
+        .history-job-role { 
+          font-size: .95rem; 
+          color: var(--color-text); 
+          margin: 0;
+          font-weight: 600;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          flex: 1;
+        }
+        .history-type-badge {
+          display: inline-block;
+          padding: .2rem .6rem;
+          background: #e0f9ff;
+          color: #0e7490;
+          border-radius: 1rem;
+          font-size: .7rem;
+          font-weight: 600;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .history-preview { 
+          font-size: .82rem; 
+          color: var(--color-text-muted); 
+          line-height: 1.45; 
+          margin-bottom: .75rem;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .history-meta { 
+          display: flex; 
+          gap: 1rem; 
+          font-size: .75rem; 
+          color: var(--color-text-muted);
+          margin-top: auto;
+        }
+        .history-meta span { 
+          display: flex; 
+          align-items: center; 
+          gap: .3rem;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+          .history-grid { grid-template-columns: 1fr; }
+          .history-meta span { white-space: normal; }
+        }
       `}</style>
     </div>
   );

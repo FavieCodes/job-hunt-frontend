@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { scholarshipsAPI, userAPI } from '@/lib';
+import { scholarshipsAPI, applicationsAPI } from '@/lib';
+import { userAPI } from '@/lib';
 import { getUser } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import type { Scholarship } from '@/lib/scholarships';
 
-// ── Confirm Applied Modal ─────────────────────────────────────────────────────
-function ConfirmAppliedModal({
+function ConfirmApplyModal({
   scholarship,
   onConfirm,
   onCancel,
@@ -23,149 +23,39 @@ function ConfirmAppliedModal({
   }, []);
 
   return (
-    <div className="confirm-overlay" onClick={onCancel}>
-      <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Icon */}
-        <div className="confirm-icon-wrap">
-          <div className="confirm-icon">
-            <i className="fas fa-graduation-cap"></i>
+    <div className="fixed-modal-overlay" onClick={onCancel}>
+      <div className="fixed-modal-content confirm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3><i className="fas fa-graduation-cap" style={{ color: '#06b6d4' }}></i> Confirm Application</h3>
+          <button onClick={onCancel} className="modal-close"><i className="fas fa-times"></i></button>
+        </div>
+        <div className="modal-body">
+          <div className="confirm-job-info">
+            <div className="confirm-logo">{scholarship.provider?.[0]?.toUpperCase() || 'S'}</div>
+            <div>
+              <p className="confirm-job-title">{scholarship.title}</p>
+              <p className="confirm-company">{scholarship.provider || 'Scholarship Provider'}</p>
+            </div>
+          </div>
+          <p className="confirm-desc">You were redirected to the external application page.</p>
+          <p className="confirm-question">
+            <i className="fas fa-question-circle" style={{ color: '#06b6d4' }}></i>
+            &nbsp;Did you complete your application on that site?
+          </p>
+          <div className="confirm-actions">
+            <button className="btn-not-yet" onClick={onCancel}>
+              <i className="fas fa-times"></i> Not yet
+            </button>
+            <button className="btn-yes-applied" onClick={onConfirm}>
+              <i className="fas fa-check"></i> Yes, I applied!
+            </button>
           </div>
         </div>
-
-        <h2 className="confirm-title">Did you complete your application?</h2>
-        <p className="confirm-subtitle">
-          You were redirected to the external application page for:
-        </p>
-
-        <div className="confirm-scholarship-info">
-          <div className="confirm-sch-logo">
-            {scholarship.provider?.[0]?.toUpperCase() || 'S'}
-          </div>
-          <div>
-            <p className="confirm-sch-title">{scholarship.title}</p>
-            <p className="confirm-sch-provider">{scholarship.provider || 'Scholarship Provider'}</p>
-          </div>
-        </div>
-
-        <p className="confirm-question">
-          Did you submit your application on that site?
-        </p>
-
-        <div className="confirm-actions">
-          <button className="confirm-btn-no" onClick={onCancel}>
-            <i className="fas fa-times"></i> Not yet
-          </button>
-          <button className="confirm-btn-yes" onClick={onConfirm}>
-            <i className="fas fa-check"></i> Yes, I applied!
-          </button>
-        </div>
-
-        <p className="confirm-note">
-          Confirming will add this to your Applications so you can track it.
-        </p>
       </div>
-
-      <style jsx>{`
-        .confirm-overlay {
-          position: fixed; inset: 0;
-          background: rgba(0,0,0,0.55);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 2000; padding: 1rem;
-          animation: fadeIn .2s ease;
-        }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-
-        .confirm-modal {
-          background: var(--color-surface);
-          border-radius: 1.25rem;
-          padding: 2rem;
-          width: 100%; max-width: 440px;
-          box-shadow: 0 20px 60px rgba(0,0,0,.25);
-          text-align: center;
-          animation: slideUp .25s ease;
-        }
-        @keyframes slideUp { from { opacity:0; transform:translateY(24px) } to { opacity:1; transform:none } }
-
-        .confirm-icon-wrap { margin-bottom: 1.25rem; }
-        .confirm-icon {
-          width: 64px; height: 64px; margin: 0 auto;
-          background: linear-gradient(135deg,#10b981,#047857);
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.6rem; color: white;
-        }
-
-        .confirm-title {
-          font-size: 1.25rem; font-weight: 800;
-          color: var(--color-text); margin-bottom: .5rem;
-        }
-        .confirm-subtitle {
-          color: var(--color-text-muted); font-size: .875rem;
-          margin-bottom: 1rem; line-height: 1.5;
-        }
-
-        .confirm-scholarship-info {
-          display: flex; align-items: center; gap: .875rem;
-          background: var(--color-bg);
-          border: 1px solid var(--color-border);
-          border-radius: .875rem;
-          padding: 1rem; margin-bottom: 1.25rem;
-          text-align: left;
-        }
-        .confirm-sch-logo {
-          width: 44px; height: 44px; flex-shrink: 0;
-          background: linear-gradient(135deg,#10b981,#047857);
-          border-radius: .625rem;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 1.1rem; font-weight: 700; color: white;
-        }
-        .confirm-sch-title {
-          font-weight: 700; font-size: .95rem;
-          color: var(--color-text); margin-bottom: .2rem;
-          line-height: 1.3;
-        }
-        .confirm-sch-provider {
-          font-size: .8rem; color: var(--color-text-muted);
-        }
-
-        .confirm-question {
-          font-weight: 600; color: var(--color-text);
-          font-size: .95rem; margin-bottom: 1.25rem;
-        }
-
-        .confirm-actions {
-          display: flex; gap: .875rem; margin-bottom: 1rem;
-        }
-        .confirm-btn-no {
-          flex: 1; padding: .75rem;
-          background: var(--color-bg);
-          border: 1.5px solid var(--color-border);
-          border-radius: .75rem; cursor: pointer;
-          color: var(--color-text); font-weight: 500;
-          display: flex; align-items: center; justify-content: center; gap: .4rem;
-          transition: all .2s;
-        }
-        .confirm-btn-no:hover { border-color: #ef4444; color: #ef4444; }
-        .confirm-btn-yes {
-          flex: 1; padding: .75rem;
-          background: linear-gradient(135deg,#10b981,#047857);
-          border: none; border-radius: .75rem;
-          color: white; font-weight: 700; cursor: pointer;
-          display: flex; align-items: center; justify-content: center; gap: .4rem;
-          transition: opacity .2s;
-        }
-        .confirm-btn-yes:hover { opacity: .9; }
-
-        .confirm-note {
-          font-size: .78rem; color: var(--color-text-muted);
-          margin: 0; line-height: 1.5;
-        }
-      `}</style>
     </div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function ScholarshipDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -190,7 +80,6 @@ export default function ScholarshipDetailPage() {
     if (user && user.role !== 'admin') checkUserState();
   }, [user, id]);
 
-  // Show the confirm modal 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && confirmingApply) {
@@ -208,7 +97,7 @@ export default function ScholarshipDetailPage() {
       setSaved(savedList.some((s: any) => s.id === id));
     } catch {}
     try {
-      const apps = await userAPI.getApplications();
+      const apps = await applicationsAPI.getApplications();
       setApplied(apps.some((a: any) => a.scholarship_id === id));
     } catch {}
   };
@@ -233,16 +122,18 @@ export default function ScholarshipDetailPage() {
     }
   };
 
-  const handleApplyClick = (e: React.MouseEvent) => {
+  const handleApplyClick = () => {
     if (applied) return;
-    setConfirmingApply(true);
-
+    if (scholarship?.apply_url) {
+      window.open(scholarship.apply_url, '_blank', 'noopener,noreferrer');
+    }
+    setTimeout(() => setConfirmingApply(true), 400);
   };
 
   const handleConfirmApplied = async () => {
     setShowConfirmModal(false);
     try {
-      await userAPI.applyForScholarship(id);
+      await applicationsAPI.applyForScholarship(id);
       setApplied(true);
       toast.success('Application recorded! Good luck 🎉');
     } catch (err: any) {
@@ -290,16 +181,14 @@ export default function ScholarshipDetailPage() {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-      {/* Confirm applied modal */}
       {showConfirmModal && (
-        <ConfirmAppliedModal
+        <ConfirmApplyModal
           scholarship={scholarship}
           onConfirm={handleConfirmApplied}
           onCancel={() => setShowConfirmModal(false)}
         />
       )}
 
-      {/* Back link */}
       <div className="back-row">
         <button onClick={() => router.back()} className="back-btn">
           <i className="fas fa-arrow-left"></i> Back
@@ -307,9 +196,7 @@ export default function ScholarshipDetailPage() {
         <Link href="/scholarships" className="all-jobs-link">View all scholarships →</Link>
       </div>
 
-      {/* Main card */}
       <div className="detail-card">
-        {/* Header */}
         <div className="detail-header">
           <div className="detail-logo">{scholarship.provider?.[0]?.toUpperCase() || 'S'}</div>
           <div className="detail-title-block">
@@ -317,11 +204,10 @@ export default function ScholarshipDetailPage() {
             <p className="detail-company">{scholarship.provider || 'Provider'}</p>
           </div>
           {scholarship.amount && (
-            <span className="detail-type-badge">{scholarship.amount}</span>
+            <span className="detail-type-badge scholarship-amount">{scholarship.amount}</span>
           )}
         </div>
 
-        {/* Meta row */}
         <div className="detail-meta">
           {scholarship.country && (
             <span className="meta-chip"><i className="fas fa-map-marker-alt"></i> {scholarship.country}</span>
@@ -335,7 +221,6 @@ export default function ScholarshipDetailPage() {
           </span>
         </div>
 
-        {/* Action buttons */}
         {user?.role !== 'admin' && (
           <div className="detail-actions">
             <button
@@ -352,20 +237,16 @@ export default function ScholarshipDetailPage() {
                 <i className="fas fa-check-circle"></i> Applied
               </span>
             ) : scholarship.apply_url ? (
-              <a
-                href={scholarship.apply_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="apply-btn-lg"
+              <button
                 onClick={handleApplyClick}
+                className="apply-btn-lg"
               >
                 <i className="fas fa-external-link-alt"></i> Apply Now
-              </a>
+              </button>
             ) : null}
           </div>
         )}
 
-        {/* Description */}
         {scholarship.description && (
           <div className="detail-section">
             <h2 className="section-heading"><i className="fas fa-file-alt"></i> Description</h2>
@@ -377,7 +258,6 @@ export default function ScholarshipDetailPage() {
           </div>
         )}
 
-        {/* Details panel */}
         <div className="detail-section">
           <h2 className="section-heading"><i className="fas fa-info-circle"></i> Scholarship Details</h2>
           <div className="details-grid">
@@ -445,7 +325,7 @@ export default function ScholarshipDetailPage() {
           color: var(--color-text); line-height: 1.2; margin-bottom: .35rem;
         }
         .detail-company { color: var(--color-text-muted); font-size: 1rem; }
-        .detail-type-badge {
+        .detail-type-badge.scholarship-amount {
           padding: .3rem .85rem; border-radius: 1rem;
           font-size: .8rem; font-weight: 700;
           background: #dcfce7; color: #166534;
@@ -471,7 +351,7 @@ export default function ScholarshipDetailPage() {
           display: flex; align-items: center; gap: .5rem;
           padding: .8rem 1.75rem;
           background: linear-gradient(135deg,#06b6d4,#1e3a8a);
-          color: white; border: none; text-decoration: none;
+          color: white; border: none;
           border-radius: .75rem; font-weight: 700; font-size: 1rem;
           cursor: pointer; transition: opacity .2s;
         }
@@ -522,6 +402,134 @@ export default function ScholarshipDetailPage() {
           .detail-actions { flex-direction:column; }
           .apply-btn-lg, .save-btn-lg { width:100%; justify-content:center; }
         }
+      `}</style>
+
+      {/* Global modal styles - same as job page */}
+      <style global jsx>{`
+        .fixed-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+        }
+        .fixed-modal-content {
+          background: var(--color-surface);
+          border-radius: 1rem;
+          width: 90%;
+          max-width: 420px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        .fixed-modal-content.confirm-modal { max-width: 420px; }
+        .fixed-modal-content.large { max-width: 680px; max-height: 90vh; overflow-y: auto; }
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.25rem 1.5rem;
+          border-bottom: 1px solid var(--color-border);
+        }
+        .modal-header h3 {
+          font-size: 1.1rem;
+          color: var(--color-text);
+          display: flex;
+          align-items: center;
+          gap: .5rem;
+        }
+        .modal-close {
+          background: none;
+          border: none;
+          color: var(--color-text-muted);
+          cursor: pointer;
+          font-size: 1.1rem;
+        }
+        .modal-body { padding: 1.5rem; }
+        .confirm-job-info {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: var(--color-bg);
+          border-radius: 0.75rem;
+          margin-bottom: 1rem;
+          border: 1px solid var(--color-border);
+        }
+        .confirm-logo {
+          width: 44px;
+          height: 44px;
+          flex-shrink: 0;
+          background: linear-gradient(135deg, #10b981, #047857);
+          border-radius: 0.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: white;
+        }
+        .confirm-job-title {
+          font-weight: 700;
+          color: var(--color-text);
+          font-size: .95rem;
+          margin-bottom: .15rem;
+        }
+        .confirm-company {
+          color: var(--color-text-muted);
+          font-size: .82rem;
+        }
+        .confirm-desc {
+          color: var(--color-text-muted);
+          font-size: .875rem;
+          margin-bottom: .75rem;
+        }
+        .confirm-question {
+          font-weight: 600;
+          color: var(--color-text);
+          font-size: .95rem;
+          margin-bottom: 1.25rem;
+          display: flex;
+          align-items: center;
+          gap: .4rem;
+        }
+        .confirm-actions { display: flex; gap: .75rem; }
+        .btn-not-yet {
+          flex: 1;
+          padding: .7rem;
+          border: 1.5px solid var(--color-border);
+          background: var(--color-bg);
+          color: var(--color-text);
+          border-radius: .6rem;
+          cursor: pointer;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: .4rem;
+          transition: border-color .2s;
+        }
+        .btn-not-yet:hover { border-color: #ef4444; color: #ef4444; }
+        .btn-yes-applied {
+          flex: 1;
+          padding: .7rem;
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: .6rem;
+          cursor: pointer;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: .4rem;
+          transition: background .2s;
+        }
+        .btn-yes-applied:hover { background: #059669; }
       `}</style>
     </div>
   );

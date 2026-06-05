@@ -11,34 +11,6 @@ export interface User {
   avatar: string | null;
 }
 
-export interface Application {
-  id: string;
-  job_id: string;
-  scholarship_id?: string;
-  application_type?: 'job' | 'scholarship' | 'manual';
-  status: 'pending' | 'reviewed' | 'accepted' | 'rejected' | 'withdrawn';
-  created_at: string;
- 
-  title?: string;
-  company?: string;
-  country?: string;
-  state?: string;
-  city?: string;
-  job_type?: string;
-  salary?: string;
-  apply_url?: string;
-  posted_at?: string;
-  job?: Job;
-}
-
-export interface ApplicationStats {
-  total: number;
-  pending: number;
-  reviewed: number;
-  accepted: number;
-  rejected: number;
-}
-
 export type ItemType = 'job' | 'scholarship';
 
 export interface SavedItem {
@@ -71,49 +43,6 @@ export const userAPI = {
     return data;
   },
 
-  // ── Applications ────────────────────────────────────────────────────────────
-
-  getApplications: async (): Promise<Application[]> => {
-    const { data } = await api.get<Application[]>('/user/applications');
-    return data;
-  },
-
-  applyForJob: async (jobId: string): Promise<Application> => {
-    const { data } = await api.post<Application>('/user/applications', { job_id: jobId });
-    return data;
-  },
-
-  applyForScholarship: async (scholarshipId: string): Promise<Application> => {
-    const { data } = await api.post<Application>('/user/applications', {
-      scholarship_id: scholarshipId,
-    });
-    return data;
-  },
-
-  /** Add a manual application */
-  addManualApplication: async (payload: {
-    title: string;
-    company: string;
-    apply_url?: string;
-    location?: string;
-    job_type?: string;
-    notes?: string;
-  }): Promise<Application> => {
-    const { data } = await api.post<Application>('/user/applications/manual', payload);
-    return data;
-  },
-
-  /** Update application status */
-  updateApplicationStatus: async (
-    applicationId: string,
-    status: Application['status']
-  ): Promise<Application> => {
-    const { data } = await api.patch<Application>(`/user/applications/${applicationId}/status`, {
-      status,
-    });
-    return data;
-  },
-
   // ── Saved Jobs ──────────────────────────────────────────────────────────────
 
   getSavedJobs: async (): Promise<Job[]> => {
@@ -131,7 +60,7 @@ export const userAPI = {
     return data;
   },
 
-  // ── Saved ScholarshipsI ──────────────
+  // ── Saved Scholarships ──────────────────────────────────────────────────────
 
   getSavedScholarships: async (): Promise<any[]> => {
     const { data } = await api.get('/user/saved/scholarships');
@@ -147,13 +76,6 @@ export const userAPI = {
 
   removeSavedScholarship: async (scholarshipId: string): Promise<{ message: string }> => {
     const { data } = await api.delete(`/user/saved/scholarships/${scholarshipId}`);
-    return data;
-  },
-
-  // ── Stats ────────────────────────────────────────────────────────────────────
-
-  getApplicationStats: async (): Promise<ApplicationStats> => {
-    const { data } = await api.get<ApplicationStats>('/user/stats');
     return data;
   },
 };

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { jobsAPI } from '@/lib';
+import { jobsAPI, applicationsAPI } from '@/lib';
 import { userAPI } from '@/lib';
 import { getUser } from '@/lib/auth';
 import api from '@/lib/api';
@@ -18,22 +18,38 @@ function ConfirmApplyModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed-modal-overlay" onClick={onCancel}>
+      <div className="fixed-modal-content confirm-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3><i className="fas fa-paper-plane" style={{ color: '#06b6d4' }}></i> Confirm Application</h3>
           <button onClick={onCancel} className="modal-close"><i className="fas fa-times"></i></button>
         </div>
         <div className="modal-body">
-          <p className="modal-desc">You were redirected to the external application page for <strong>{job.title}</strong>.</p>
-          <p className="modal-question">
+          <div className="confirm-job-info">
+            <div className="confirm-logo">{job.company?.[0]?.toUpperCase() || 'J'}</div>
+            <div>
+              <p className="confirm-job-title">{job.title}</p>
+              <p className="confirm-company">{job.company || 'Company'}</p>
+            </div>
+          </div>
+          <p className="confirm-desc">You were redirected to the external application page.</p>
+          <p className="confirm-question">
             <i className="fas fa-question-circle" style={{ color: '#06b6d4' }}></i>
-            &nbsp;Did you complete your application?
+            &nbsp;Did you complete your application on that site?
           </p>
-          <div className="modal-actions">
-            <button className="btn-no" onClick={onCancel}><i className="fas fa-times"></i> Not yet</button>
-            <button className="btn-yes" onClick={onConfirm}><i className="fas fa-check"></i> Yes, I applied!</button>
+          <div className="confirm-actions">
+            <button className="btn-not-yet" onClick={onCancel}>
+              <i className="fas fa-times"></i> Not yet
+            </button>
+            <button className="btn-yes-applied" onClick={onConfirm}>
+              <i className="fas fa-check"></i> Yes, I applied!
+            </button>
           </div>
         </div>
       </div>
@@ -89,7 +105,7 @@ export default function JobDetailPage() {
   const checkUserState = async () => {
     try {
       const [apps, savedList] = await Promise.all([
-        userAPI.getApplications(),
+        applicationsAPI.getApplications(),
         userAPI.getSavedJobs(),
       ]);
       setApplied(apps.some((a: any) => a.job_id === id));
@@ -106,7 +122,7 @@ export default function JobDetailPage() {
 
   const handleConfirmApplied = async () => {
     try {
-      await userAPI.applyForJob(id);
+      await applicationsAPI.applyForJob(id);
       setApplied(true);
       toast.success('Application recorded! Good luck 🎉');
     } catch (err: any) {
@@ -403,24 +419,149 @@ export default function JobDetailPage() {
         }
         .detail-label { font-size: .75rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .05em; }
         .detail-value { font-size: .95rem; font-weight: 600; color: var(--color-text); text-transform: capitalize; }
-        /* Confirm modal */
-        .modal-overlay { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:1rem; }
-        .modal-box { background:var(--color-surface);border-radius:1rem;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2); }
-        .modal-header { display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem;border-bottom:1px solid var(--color-border); }
-        .modal-header h3 { font-size:1.1rem;color:var(--color-text);display:flex;align-items:center;gap:.5rem; }
-        .modal-close { background:none;border:none;color:var(--color-text-muted);cursor:pointer;font-size:1.1rem; }
-        .modal-body { padding:1.5rem; }
-        .modal-desc { color:var(--color-text-muted);font-size:.875rem;margin-bottom:.75rem;line-height:1.6; }
-        .modal-question { font-weight:600;color:var(--color-text);font-size:.95rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:.4rem; }
-        .modal-actions { display:flex;gap:.75rem; }
-        .btn-no { flex:1;padding:.7rem;border:1.5px solid var(--color-border);background:var(--color-bg);color:var(--color-text);border-radius:.6rem;cursor:pointer;font-weight:500;display:flex;align-items:center;justify-content:center;gap:.4rem; }
-        .btn-no:hover { border-color:#ef4444;color:#ef4444; }
-        .btn-yes { flex:1;padding:.7rem;background:#10b981;color:white;border:none;border-radius:.6rem;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;gap:.4rem; }
-        .btn-yes:hover { background:#059669; }
         @media(max-width:640px) {
           .detail-job-title { font-size:1.3rem; }
           .detail-actions { flex-direction:column; }
-          .apply-btn-lg,.save-btn-lg,.external-link-btn { width:100%;justify-content:center; }
+          .apply-btn-lg,.save-btn-lg,.external-link-btn { width:100%; justify-content:center; }
+        }
+      `}</style>
+
+      {/* Global modal styles - applied to the whole page */}
+      <style global jsx>{`
+        .fixed-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+        }
+        .fixed-modal-content {
+          background: var(--color-surface);
+          border-radius: 1rem;
+          width: 90%;
+          max-width: 420px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+        .fixed-modal-content.confirm-modal {
+          max-width: 420px;
+        }
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.25rem 1.5rem;
+          border-bottom: 1px solid var(--color-border);
+        }
+        .modal-header h3 {
+          font-size: 1.1rem;
+          color: var(--color-text);
+          display: flex;
+          align-items: center;
+          gap: .5rem;
+        }
+        .modal-close {
+          background: none;
+          border: none;
+          color: var(--color-text-muted);
+          cursor: pointer;
+          font-size: 1.1rem;
+        }
+        .modal-body {
+          padding: 1.5rem;
+        }
+        .confirm-job-info {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: var(--color-bg);
+          border-radius: 0.75rem;
+          margin-bottom: 1rem;
+          border: 1px solid var(--color-border);
+        }
+        .confirm-logo {
+          width: 44px;
+          height: 44px;
+          flex-shrink: 0;
+          background: linear-gradient(135deg, #06b6d4, #1e3a8a);
+          border-radius: 0.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: white;
+        }
+        .confirm-job-title {
+          font-weight: 700;
+          color: var(--color-text);
+          font-size: .95rem;
+          margin-bottom: .15rem;
+        }
+        .confirm-company {
+          color: var(--color-text-muted);
+          font-size: .82rem;
+        }
+        .confirm-desc {
+          color: var(--color-text-muted);
+          font-size: .875rem;
+          margin-bottom: .75rem;
+        }
+        .confirm-question {
+          font-weight: 600;
+          color: var(--color-text);
+          font-size: .95rem;
+          margin-bottom: 1.25rem;
+          display: flex;
+          align-items: center;
+          gap: .4rem;
+        }
+        .confirm-actions {
+          display: flex;
+          gap: .75rem;
+        }
+        .btn-not-yet {
+          flex: 1;
+          padding: .7rem;
+          border: 1.5px solid var(--color-border);
+          background: var(--color-bg);
+          color: var(--color-text);
+          border-radius: .6rem;
+          cursor: pointer;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: .4rem;
+          transition: border-color .2s;
+        }
+        .btn-not-yet:hover {
+          border-color: #ef4444;
+          color: #ef4444;
+        }
+        .btn-yes-applied {
+          flex: 1;
+          padding: .7rem;
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: .6rem;
+          cursor: pointer;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: .4rem;
+          transition: background .2s;
+        }
+        .btn-yes-applied:hover {
+          background: #059669;
         }
       `}</style>
     </div>

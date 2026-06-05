@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { scholarshipsAPI, adminScholarshipsAPI, userAPI, Scholarship, AddScholarshipForm } from '@/lib';
+import { scholarshipsAPI, adminScholarshipsAPI, userAPI, applicationsAPI, Scholarship, AddScholarshipForm } from '@/lib';
 import { getUser } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -12,7 +12,6 @@ const emptyForm: AddScholarshipForm = {
   field: '', deadline: '', amount: '', apply_url: '',
 };
 
-// ── Pagination component ──────────────────────────────────────────────────────
 function Pagination({
   currentPage,
   totalPages,
@@ -89,7 +88,54 @@ function Pagination({
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+function ConfirmApplyModal({
+  scholarship,
+  onConfirm,
+  onCancel,
+}: {
+  scholarship: Scholarship;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  return (
+    <div className="fixed-modal-overlay" onClick={onCancel}>
+      <div className="fixed-modal-content confirm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3><i className="fas fa-graduation-cap" style={{ color: '#06b6d4' }}></i> Confirm Application</h3>
+          <button onClick={onCancel} className="modal-close"><i className="fas fa-times"></i></button>
+        </div>
+        <div className="modal-body">
+          <div className="confirm-job-info">
+            <div className="confirm-logo">{scholarship.provider?.[0]?.toUpperCase() || 'S'}</div>
+            <div>
+              <p className="confirm-job-title">{scholarship.title}</p>
+              <p className="confirm-company">{scholarship.provider || 'Scholarship Provider'}</p>
+            </div>
+          </div>
+          <p className="confirm-desc">You were redirected to the external application page.</p>
+          <p className="confirm-question">
+            <i className="fas fa-question-circle" style={{ color: '#06b6d4' }}></i>
+            &nbsp;Did you complete your application on that site?
+          </p>
+          <div className="confirm-actions">
+            <button className="btn-not-yet" onClick={onCancel}>
+              <i className="fas fa-times"></i> Not yet
+            </button>
+            <button className="btn-yes-applied" onClick={onConfirm}>
+              <i className="fas fa-check"></i> Yes, I applied!
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ScholarshipsPage() {
   const [scholarships, setScholarships]     = useState<Scholarship[]>([]);
   const [loading, setLoading]               = useState(true);
@@ -102,6 +148,8 @@ export default function ScholarshipsPage() {
   const [submitting, setSubmitting]         = useState(false);
   const [savedScholarships, setSavedScholarships] = useState<Set<string>>(new Set());
   const [savingId, setSavingId]                   = useState<string | null>(null);
+  const [appliedScholarships, setAppliedScholarships] = useState<Set<string>>(new Set());
+  const [pendingApply, setPendingApply] = useState<Scholarship | null>(null);
 
   useEffect(() => { setUser(getUser()); }, []);
 
@@ -109,6 +157,7 @@ export default function ScholarshipsPage() {
     fetchScholarships();
     if (user && user.role !== 'admin') {
       fetchSavedScholarships();
+      fetchAppliedScholarships();
     }
   }, [filters, user]);
 
@@ -117,6 +166,37 @@ export default function ScholarshipsPage() {
       const saved = await userAPI.getSavedScholarships();
       setSavedScholarships(new Set(saved.map((s: any) => s.id)));
     } catch {}
+  };
+
+  const fetchAppliedScholarships = async () => {
+    try {
+      const apps = await applicationsAPI.getApplications();
+      setAppliedScholarships(new Set(apps.filter((a: any) => a.scholarship_id).map((a: any) => a.scholarship_id)));
+    } catch {}
+  };
+
+  const handleApplyClick = (scholarship: Scholarship) => {
+    if (scholarship.apply_url) window.open(scholarship.apply_url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => setPendingApply(scholarship), 400);
+  };
+
+  const handleConfirmApplied = async () => {
+    if (!pendingApply) return;
+    try {
+      await applicationsAPI.applyForScholarship(pendingApply.id);
+      setAppliedScholarships((prev) => new Set([...prev, pendingApply.id]));
+      toast.success('Application recorded! Good luck 🎉');
+    } catch (err: any) {
+      const msg = err.response?.data?.error || '';
+      if (msg.toLowerCase().includes('already')) {
+        setAppliedScholarships((prev) => new Set([...prev, pendingApply.id]));
+        toast.success('Already recorded!');
+      } else {
+        toast.error(msg || 'Failed to record application');
+      }
+    } finally {
+      setPendingApply(null);
+    }
   };
 
   const isAdmin = user?.role === 'admin';
@@ -200,8 +280,14 @@ export default function ScholarshipsPage() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      {pendingApply && (
+        <ConfirmApplyModal
+          scholarship={pendingApply}
+          onConfirm={handleConfirmApplied}
+          onCancel={() => setPendingApply(null)}
+        />
+      )}
 
-      {/* Header */}
       <div className="page-header">
         <div className="header-row">
           <div>
@@ -223,7 +309,6 @@ export default function ScholarshipsPage() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="filters-container">
         <div className="filter-group">
           {!isAdmin && (
@@ -248,7 +333,6 @@ export default function ScholarshipsPage() {
         </div>
       </div>
 
-      {/* Scholarships grid */}
       {loading ? (
         <div className="scholarships-grid">
           {Array.from({ length: SCHOLARSHIPS_PER_PAGE }).map((_, i) => (
@@ -317,9 +401,18 @@ export default function ScholarshipsPage() {
                     </div>
                   ) : (
                     <>
-                      <a href={scholarship.apply_url} target="_blank" rel="noopener noreferrer" className="apply-btn">
-                        <i className="fas fa-external-link-alt"></i> Apply Now
-                      </a>
+                      {appliedScholarships.has(scholarship.id) ? (
+                        <span className="applied-badge">
+                          <i className="fas fa-check-circle"></i> Applied
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleApplyClick(scholarship)}
+                          className="apply-btn"
+                        >
+                          <i className="fas fa-external-link-alt"></i> Apply Now
+                        </button>
+                      )}
                       <button
                         className={`save-btn ${savedScholarships.has(scholarship.id) ? 'saved' : ''}`}
                         onClick={() => handleSave(scholarship.id)}
@@ -343,7 +436,6 @@ export default function ScholarshipsPage() {
         </div>
       )}
 
-      {/* Pagination */}
       <Pagination
         currentPage={filters.page}
         totalPages={totalPages}
@@ -352,10 +444,9 @@ export default function ScholarshipsPage() {
         onPageChange={handlePageChange}
       />
 
-      {/* Add Scholarship Modal */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="fixed-modal-content large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3><i className="fas fa-plus-circle"></i> Add New Scholarship</h3>
               <button onClick={() => setShowAddModal(false)} className="modal-close">
@@ -427,94 +518,146 @@ export default function ScholarshipsPage() {
         .filter-group { display:flex; gap:1rem; }
         .filter-group select, .filter-group input { flex:1; padding:.75rem; background:var(--color-bg); border:1px solid var(--color-border); border-radius:.75rem; color:var(--color-text); }
         .scholarships-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:1.5rem; margin-bottom:2rem; }
-        .engagement-stats { display:flex; gap:.75rem; align-items:center; flex:1; }
-        .engagement-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .85rem; border-radius:2rem; font-size:.8rem; font-weight:600; }
-        .applied-badge { background:#dbeafe; color:#1e40af; }
-        .saved-badge   { background:#ede9fe; color:#6d28d9; }
-        .save-btn.saved i { color: #06b6d4; }
-
-        /* ── Pagination ──────────────────────────────────────────────────── */
-        .pagination-wrapper {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.75rem;
-          margin-top: 2rem;
-          padding-bottom: 2rem;
-        }
-        .pagination-info {
-          font-size: 0.875rem;
-          color: var(--color-text-muted);
-          margin: 0;
-        }
-        .pagination {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          flex-wrap: wrap;
-          justify-content: center;
-        }
-        .page-btn {
-          min-width: 38px;
-          height: 38px;
-          padding: 0 0.6rem;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+        .scholarship-card {
           background: var(--color-surface);
           border: 1px solid var(--color-border);
-          border-radius: 0.5rem;
-          cursor: pointer;
-          color: var(--color-text);
-          font-size: 0.875rem;
-          font-weight: 500;
+          border-radius: 1rem;
+          padding: 1.25rem;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .scholarship-card:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+        .scholarship-card-header { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        .scholarship-icon {
+          width: 50px; height: 50px;
+          background: linear-gradient(135deg,#10b981,#047857);
+          border-radius: 0.75rem;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 1.5rem; color: white;
+        }
+        .scholarship-info { flex: 1; }
+        .scholarship-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.25rem; }
+        .scholarship-title a { color: var(--color-text); text-decoration: none; }
+        .scholarship-title a:hover { color: var(--color-primary); }
+        .provider-name { color: var(--color-text-muted); font-size: 0.875rem; }
+        .scholarship-details {
+          display: flex; flex-wrap: wrap; gap: 1rem;
+          margin-bottom: 1rem; padding: 0.75rem 0;
+          border-top: 1px solid var(--color-border);
+          border-bottom: 1px solid var(--color-border);
+        }
+        .detail-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--color-text-muted); }
+        .detail-item i { width: 16px; }
+        .scholarship-description { color: var(--color-text-muted); font-size: 0.875rem; line-height: 1.5; margin-bottom: 1rem; }
+        .scholarship-card-footer { display: flex; gap: 0.75rem; }
+        .apply-btn {
+          flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+          padding: 0.625rem; background: linear-gradient(135deg,#10b981,#047857);
+          color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;
+          text-decoration: none; transition: background 0.2s;
+        }
+        .apply-btn:hover { opacity: .9; }
+        .save-btn {
+          width: 40px; background: var(--color-surface-2); border: 1px solid var(--color-border);
+          border-radius: 0.5rem; cursor: pointer; color: var(--color-text-muted);
           transition: all 0.2s;
         }
-        .page-btn:hover:not(:disabled) {
-          background: var(--color-primary);
-          color: white;
-          border-color: var(--color-primary);
+        .save-btn:hover { color: var(--color-primary); border-color: var(--color-primary); }
+        .save-btn.saved i { color: #10b981; }
+        .applied-badge {
+          display: inline-flex; align-items: center; gap: .4rem;
+          padding: .4rem .85rem; border-radius: 2rem;
+          font-size: .8rem; font-weight: 700;
+          background: #d1fae5; color: #065f46;
+          border: 1.5px solid #6ee7b7;
         }
-        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .page-btn.active {
-          background: var(--color-primary);
-          color: white;
-          border-color: var(--color-primary);
-          font-weight: 700;
-        }
-        .page-btn-arrow { font-size: 0.75rem; }
-        .page-ellipsis {
-          min-width: 38px; height: 38px;
-          display: inline-flex; align-items: center; justify-content: center;
-          color: var(--color-text-muted); font-size: 1rem;
-        }
+        .engagement-stats { display: flex; gap: .75rem; align-items: center; flex: 1; }
+        .engagement-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .85rem; border-radius: 2rem; font-size: .8rem; font-weight: 600; }
+        .applied-badge-stats { background: #dbeafe; color: #1e40af; }
+        .saved-badge { background: #ede9fe; color: #6d28d9; }
 
-        /* Modal */
-        .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; padding:1rem; }
-        .modal-content { background:var(--color-surface); border-radius:1rem; width:90%; max-width:400px; box-shadow:var(--shadow-lg); }
-        .modal-content.large { max-width:680px; max-height:90vh; overflow-y:auto; }
-        .modal-header { display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; border-bottom:1px solid var(--color-border); }
-        .modal-header h3 { font-size:1.1rem; color:var(--color-text); }
-        .modal-close { background:none; border:none; color:var(--color-text-muted); cursor:pointer; font-size:1.1rem; }
-        .modal-body { padding:1.5rem; }
-        .modal-footer { display:flex; justify-content:flex-end; gap:.75rem; padding:1rem 1.5rem; border-top:1px solid var(--color-border); }
-        .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-        .form-group { display:flex; flex-direction:column; gap:.4rem; }
-        .form-group.full-width { grid-column:1/-1; }
-        .form-group label { font-size:.85rem; font-weight:600; color:var(--color-text-muted); }
-        .required { color:#ef4444; }
-        .form-group input, .form-group select, .form-group textarea { padding:.65rem .9rem; background:var(--color-bg); border:1px solid var(--color-border); border-radius:.6rem; color:var(--color-text); font-size:.95rem; outline:none; transition:border-color .2s; }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--color-primary,#06b6d4); }
-        .form-group textarea { resize:vertical; font-family:inherit; }
-        .cancel-btn { padding:.65rem 1.25rem; background:var(--color-bg); border:1px solid var(--color-border); border-radius:.6rem; color:var(--color-text); cursor:pointer; font-size:.95rem; }
-        .submit-btn { display:flex; align-items:center; gap:.5rem; padding:.65rem 1.5rem; background:var(--color-primary,#06b6d4); color:white; border:none; border-radius:.6rem; cursor:pointer; font-size:.95rem; font-weight:600; }
-        .submit-btn:disabled { opacity:.6; cursor:not-allowed; }
+        .pagination-wrapper {
+          display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+          margin-top: 2rem; padding-bottom: 2rem;
+        }
+        .pagination-info { font-size: 0.875rem; color: var(--color-text-muted); margin: 0; }
+        .pagination { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; justify-content: center; }
+        .page-btn {
+          min-width: 38px; height: 38px; padding: 0 0.6rem;
+          display: inline-flex; align-items: center; justify-content: center;
+          background: var(--color-surface); border: 1px solid var(--color-border);
+          border-radius: 0.5rem; cursor: pointer; color: var(--color-text);
+          font-size: 0.875rem; font-weight: 500; transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .page-btn.active { background: var(--color-primary); color: white; border-color: var(--color-primary); font-weight: 700; }
+        .page-btn-arrow { font-size: 0.75rem; }
+        .page-ellipsis { min-width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 1rem; }
+
+        .fixed-modal-overlay {
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center;
+          z-index: 1000; padding: 1rem;
+        }
+        .fixed-modal-content { background: var(--color-surface); border-radius: 1rem; width: 90%; max-width: 420px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); }
+        .fixed-modal-content.large { max-width: 680px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-border); }
+        .modal-header h3 { font-size: 1.1rem; color: var(--color-text); display: flex; align-items: center; gap: .5rem; }
+        .modal-close { background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 1.1rem; }
+        .modal-body { padding: 1.5rem; }
+        .confirm-job-info {
+          display: flex; align-items: center; gap: 1rem; padding: 1rem;
+          background: var(--color-bg); border-radius: 0.75rem; margin-bottom: 1rem;
+          border: 1px solid var(--color-border);
+        }
+        .confirm-logo {
+          width: 44px; height: 44px; flex-shrink: 0;
+          background: linear-gradient(135deg, #10b981, #047857);
+          border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;
+          font-size: 1.2rem; font-weight: 700; color: white;
+        }
+        .confirm-job-title { font-weight: 700; color: var(--color-text); font-size: .95rem; margin-bottom: .15rem; }
+        .confirm-company { color: var(--color-text-muted); font-size: .82rem; }
+        .confirm-desc { color: var(--color-text-muted); font-size: .875rem; margin-bottom: .75rem; }
+        .confirm-question { font-weight: 600; color: var(--color-text); font-size: .95rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: .4rem; }
+        .confirm-actions { display: flex; gap: .75rem; }
+        .btn-not-yet {
+          flex: 1; padding: .7rem; border: 1.5px solid var(--color-border);
+          background: var(--color-bg); color: var(--color-text);
+          border-radius: .6rem; cursor: pointer; font-weight: 500;
+          display: flex; align-items: center; justify-content: center; gap: .4rem;
+          transition: border-color .2s;
+        }
+        .btn-not-yet:hover { border-color: #ef4444; color: #ef4444; }
+        .btn-yes-applied {
+          flex: 1; padding: .7rem; background: #10b981; color: white;
+          border: none; border-radius: .6rem; cursor: pointer; font-weight: 700;
+          display: flex; align-items: center; justify-content: center; gap: .4rem;
+          transition: background .2s;
+        }
+        .btn-yes-applied:hover { background: #059669; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: .4rem; }
+        .form-group.full-width { grid-column: 1/-1; }
+        .form-group label { font-size: .85rem; font-weight: 600; color: var(--color-text-muted); }
+        .required { color: #ef4444; }
+        .form-group input, .form-group select, .form-group textarea {
+          padding: .65rem .9rem; background: var(--color-bg);
+          border: 1px solid var(--color-border); border-radius: .6rem;
+          color: var(--color-text); font-size: .95rem; outline: none;
+        }
+        .cancel-btn { padding: .65rem 1.25rem; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: .6rem; color: var(--color-text); cursor: pointer; font-size: .95rem; }
+        .submit-btn { display: flex; align-items: center; gap: .5rem; padding: .65rem 1.5rem; background: var(--color-primary,#06b6d4); color: white; border: none; border-radius: .6rem; cursor: pointer; font-size: .95rem; font-weight: 600; }
+        .submit-btn:disabled { opacity: .6; cursor: not-allowed; }
 
         @media(max-width:768px) {
-          .scholarships-grid { grid-template-columns:1fr; }
-          .filter-group { flex-direction:column; }
-          .form-grid { grid-template-columns:1fr; }
-          .header-row { flex-direction:column; }
+          .scholarships-grid { grid-template-columns: 1fr; }
+          .filter-group { flex-direction: column; }
+          .form-grid { grid-template-columns: 1fr; }
+          .header-row { flex-direction: column; }
         }
       `}</style>
     </div>

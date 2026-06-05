@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { jobsAPI, userAPI } from '@/lib';
+import { jobsAPI, userAPI, applicationsAPI } from '@/lib';
 import { adminJobsAPI } from '@/lib/jobs';
 import { getUser } from '@/lib/auth';
 import api from '@/lib/api';
@@ -31,7 +31,6 @@ function Pagination({
 }) {
   if (totalPages <= 1) return null;
 
-  // Build page number array with ellipsis logic
   const getPages = () => {
     const pages: (number | '...')[] = [];
     if (totalPages <= 7) {
@@ -199,8 +198,8 @@ export default function JobsPage() {
 
   const fetchAppliedJobs = async () => {
     try {
-      const apps = await userAPI.getApplications();
-      setAppliedJobs(new Set(apps.map((a: any) => a.job_id)));
+      const apps = await applicationsAPI.getApplications();
+      setAppliedJobs(new Set(apps.map((a: any) => a.job_id).filter(Boolean)));
     } catch {}
   };
 
@@ -219,7 +218,7 @@ export default function JobsPage() {
   const handleConfirmApplied = async () => {
     if (!pendingApply) return;
     try {
-      await userAPI.applyForJob(pendingApply.id);
+      await applicationsAPI.applyForJob(pendingApply.id);
       setAppliedJobs((prev) => new Set([...prev, pendingApply.id]));
       toast.success('Application recorded! Good luck 🎉');
     } catch (err: any) {
@@ -271,9 +270,9 @@ export default function JobsPage() {
   };
 
   const getTypeColor = (type: string) => ({
-    'full-time': '#8fe3c7ff', 'part-time': '#c0baafff',
-    'remote': '#aadfe8ff', 'contract': '#a88beaff', 'internship': '#ef4444',
-  }[type?.toLowerCase()] || '#6b7280');
+    'full-time': '#088e61ff', 'part-time': '#a27117ff',
+    'remote': '#18a5beff', 'contract': '#3d0eabff', 'internship': '#ef4444',
+  }[type?.toLowerCase()] || '#0d3b96ff');
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
