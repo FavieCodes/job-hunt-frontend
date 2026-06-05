@@ -25,7 +25,7 @@ interface EducationEntry {
 }
 interface ResumeForm {
   title: string; fullName: string; email: string; phone: string;
-  location: string; linkedin: string; website: string; summary: string;
+  location: string; linkedin: string; github: string; website: string; summary: string;
   skills: string; experience: ExperienceEntry[]; education: EducationEntry[];
   certifications: string; languages: string;
 }
@@ -112,7 +112,6 @@ async function extractTextFromFile(file: File): Promise<{ text: string; error?: 
       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.type === 'application/msword') {
     try {
-      // Dynamically import mammoth
       const mammoth = await import('mammoth');
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
@@ -143,6 +142,65 @@ async function extractTextFromFile(file: File): Promise<{ text: string; error?: 
   return { text: '', error: 'Unsupported file type. Please upload a .txt, .pdf, or .docx file, or paste your resume text below.' };
 }
 
+// ── PDF Download Function ─────────────────────────────────────────────────────
+const downloadPDF = (html: string, fileName: string) => {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    toast.error('Please allow popups to download PDF');
+    return;
+  }
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${fileName} - Resume</title>
+        <meta charset="utf-8">
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            font-size: 10pt;
+            line-height: 1.5;
+            color: #1a1a1a;
+            background: white;
+            padding: 40px;
+          }
+          @media print {
+            body {
+              padding: 0;
+            }
+            .no-print {
+              display: none;
+            }
+          }
+          .resume-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="resume-container">
+          ${html}
+        </div>
+        <script>
+          window.onload = () => {
+            window.print();
+            setTimeout(() => window.close(), 500);
+          };
+        <\/script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
+
 // ── Main page component ───────────────────────────────────────────────────────
 
 type ActiveTab = 'build' | 'tailor' | 'history';
@@ -158,8 +216,8 @@ export default function ResumeBuilderPage() {
   const [generatedHtml, setGeneratedHtml] = useState('');
 
   const [form, setForm] = useState<ResumeForm>({
-    title: 'My Resume', fullName: user?.username || '', email: user?.email || '',
-    phone: '', location: '', linkedin: '', website: '',
+    title: '', fullName: user?.username || '', email: user?.email || '',
+    phone: '', location: '', linkedin: '', github: '', website: '',
     summary: '', skills: '',
     experience: [EMPTY_EXP()], education: [EMPTY_EDU()],
     certifications: '', languages: '',
@@ -172,7 +230,6 @@ export default function ResumeBuilderPage() {
   const [targetRole, setTargetRole]         = useState('');
   const [tailoring, setTailoring]           = useState(false);
   const [tailoredHtml, setTailoredHtml]     = useState('');
-  const [tailoringNotes, setTailoringNotes] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // History state
@@ -218,18 +275,6 @@ export default function ResumeBuilderPage() {
     } finally { setGenerating(false); }
   };
 
-  // Print / save PDF
-  const handlePrint = (html: string, name: string) => {
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(`<!DOCTYPE html><html><head>
-      <title>${name} — Resume</title>
-      <style>body{margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;color:#1a1a1a;}@media print{body{margin:0;}}</style>
-    </head><body>${html}</body></html>`);
-    w.document.close();
-    w.print();
-  };
-
   // File upload for Tailor tab 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -252,7 +297,6 @@ export default function ResumeBuilderPage() {
       toast.error('No readable text found. Please paste your resume text in the box below.');
     }
 
-    // Reset input so same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -264,14 +308,13 @@ export default function ResumeBuilderPage() {
     if (!targetRole.trim()) {
       toast.error('Please enter the role you are applying for'); return;
     }
-    setTailoring(true); setTailoredHtml(''); setTailoringNotes('');
+    setTailoring(true); setTailoredHtml('');
     try {
       const { data } = await api.post('/resume/tailor', {
         resumeText: tailorText,
         targetRole: targetRole.trim(),
       });
       setTailoredHtml(data.generated_html || '');
-      setTailoringNotes(data.tailoring_notes || '');
       toast.success('Resume tailored and saved! 🎯');
       fetchHistory();
     } catch (err: any) {
@@ -304,12 +347,12 @@ export default function ResumeBuilderPage() {
         <div className="resume-step-content">
           <h2 className="resume-step-title"><i className="fas fa-user"></i> Personal Information</h2>
           <div className="resume-form-grid">
-            <Field label="Resume Title"><input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Senior Backend Engineer Resume" /></Field>
             <Field label="Full Name" required><input value={form.fullName} onChange={(e) => set('fullName', e.target.value)} placeholder="John Adeyemi" /></Field>
             <Field label="Email" required><input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="john@example.com" /></Field>
             <Field label="Phone"><input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+234 800 000 0000" /></Field>
             <Field label="Location"><input value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="Lagos, Nigeria" /></Field>
             <Field label="LinkedIn URL"><input value={form.linkedin} onChange={(e) => set('linkedin', e.target.value)} placeholder="https://linkedin.com/in/yourname" /></Field>
+            <Field label="GitHub URL"><input value={form.github} onChange={(e) => set('github', e.target.value)} placeholder="https://github.com/yourusername" /></Field>
             <Field label="Website / Portfolio"><input value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="https://yourportfolio.com" /></Field>
           </div>
         </div>
@@ -426,6 +469,8 @@ export default function ResumeBuilderPage() {
               <li><strong>{form.fullName}</strong> — {form.email}</li>
               {form.phone    && <li><i className="fas fa-phone"></i> {form.phone}</li>}
               {form.location && <li><i className="fas fa-map-marker-alt"></i> {form.location}</li>}
+              {form.github   && <li><i className="fab fa-github"></i> {form.github}</li>}
+              {form.linkedin && <li><i className="fab fa-linkedin"></i> {form.linkedin}</li>}
               <li>{form.experience.filter((e) => e.title).length} work experience(s)</li>
               <li>{form.education.filter((e) => e.degree).length} education entry/entries</li>
               {form.skills && <li>Skills: {form.skills.slice(0, 60)}{form.skills.length > 60 ? '…' : ''}</li>}
@@ -451,8 +496,8 @@ export default function ResumeBuilderPage() {
                   <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i> Resume ready and saved!
                 </span>
                 <div className="resume-result-actions">
-                  <button onClick={() => handlePrint(generatedHtml, form.fullName)} className="resume-print-btn">
-                    <i className="fas fa-print"></i> Print / Save PDF
+                  <button onClick={() => downloadPDF(generatedHtml, form.fullName)} className="resume-print-btn">
+                    <i className="fas fa-download"></i> Download PDF
                   </button>
                   <button onClick={handleGenerate} disabled={generating} className="resume-regen-btn">
                     <i className="fas fa-redo"></i> Regenerate
@@ -474,7 +519,7 @@ export default function ResumeBuilderPage() {
     <div className="resume-step-content">
       <h2 className="resume-step-title"><i className="fas fa-bullseye"></i> Upload &amp; Tailor Resume</h2>
       <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: 1.7 }}>
-        Already have a resume? Upload it or paste the text, enter the target role, and AI will rewrite your summary and bullet points to match — without changing any facts.
+        Already have a resume? Upload it or paste the text, enter the target role, and AI will rewrite your summary and bullet points to match your target role — without changing any facts.
       </p>
 
       <div className="tailor-step-block">
@@ -482,7 +527,6 @@ export default function ResumeBuilderPage() {
         <div className="tailor-step-body">
           <h3>Upload your resume <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(or paste below)</span></h3>
 
-          {/* Supported formats info */}
           <div className="tailor-format-info">
             <i className="fas fa-info-circle"></i>
             <span>
@@ -601,18 +645,11 @@ export default function ResumeBuilderPage() {
               <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i> Tailored resume ready and saved!
             </span>
             <div className="resume-result-actions">
-              <button onClick={() => handlePrint(tailoredHtml, targetRole)} className="resume-print-btn">
-                <i className="fas fa-print"></i> Print / Save PDF
+              <button onClick={() => downloadPDF(tailoredHtml, targetRole)} className="resume-print-btn">
+                <i className="fas fa-download"></i> Download PDF
               </button>
             </div>
           </div>
-          {tailoringNotes && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '0.75rem', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: '#166534' }}>
-                <strong>💡 Coaching tip:</strong> {tailoringNotes}
-              </p>
-            </div>
-          )}
           <div className="resume-preview" dangerouslySetInnerHTML={{ __html: tailoredHtml }} />
         </div>
       )}
@@ -646,8 +683,8 @@ export default function ResumeBuilderPage() {
               </span>
             </div>
             <div className="resume-result-actions">
-              <button onClick={() => handlePrint(viewingResume.generated_html, viewingResume.title)} className="resume-print-btn">
-                <i className="fas fa-print"></i> Print / Save PDF
+              <button onClick={() => downloadPDF(viewingResume.generated_html, viewingResume.title)} className="resume-print-btn">
+                <i className="fas fa-download"></i> Download PDF
               </button>
               <button onClick={() => handleDelete(viewingResume.id)} disabled={deletingId === viewingResume.id} className="resume-regen-btn" style={{ color: '#ef4444' }}>
                 {deletingId === viewingResume.id ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-trash-alt"></i>}
@@ -695,7 +732,9 @@ export default function ResumeBuilderPage() {
                   </div>
                   <div className="history-card-actions">
                     <button onClick={() => setViewingResume(r)} className="history-view-btn"><i className="fas fa-eye"></i> View</button>
-                    <button onClick={() => handlePrint(r.generated_html, r.title)} className="history-print-btn" title="Print"><i className="fas fa-print"></i></button>
+                    <button onClick={() => downloadPDF(r.generated_html, r.title)} className="history-print-btn" title="Download PDF">
+                      <i className="fas fa-download"></i>
+                    </button>
                     <button onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} className="history-delete-btn" title="Delete">
                       {deletingId === r.id ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-trash-alt"></i>}
                     </button>
@@ -803,12 +842,81 @@ export default function ResumeBuilderPage() {
         .history-delete-btn:hover { border-color:#ef4444; color:#ef4444; background:#fee2e2; }
         .history-delete-btn:disabled { opacity:.5; cursor:not-allowed; }
 
+        .resume-result-section {
+          margin-top: 1.5rem;
+        }
+        .resume-result-toolbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+        }
+        .resume-result-label {
+          font-weight: 700;
+          color: var(--color-text);
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .resume-result-actions {
+          display: flex;
+          gap: 0.75rem;
+        }
+        .resume-print-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 0.6rem 1.25rem;
+          background: #10b981;
+          color: white;
+          border: none;
+          border-radius: 0.6rem;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 0.875rem;
+          transition: opacity 0.2s;
+        }
+        .resume-print-btn:hover {
+          opacity: 0.9;
+        }
+        .resume-regen-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 0.6rem 1.1rem;
+          background: var(--color-bg);
+          border: 1.5px solid var(--color-border);
+          color: var(--color-text);
+          border-radius: 0.6rem;
+          cursor: pointer;
+          font-size: 0.875rem;
+          transition: all 0.2s;
+        }
+        .resume-regen-btn:hover {
+          border-color: #06b6d4;
+          color: #06b6d4;
+        }
+        .resume-preview {
+          background: white;
+          border: 1px solid #d1d5db;
+          border-radius: 0.875rem;
+          padding: 2rem;
+          color: #1a1a1a;
+          font-family: 'Segoe UI', Arial, sans-serif;
+          font-size: 11pt;
+          line-height: 1.6;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
         @media(max-width:640px) {
           .resume-top-tabs { overflow-x:auto; white-space:nowrap; }
           .tailor-step-block { flex-direction:column; gap:.75rem; }
           .tailor-step-number { margin-top:0; }
           .history-card { flex-wrap:wrap; }
           .history-card-actions { width:100%; justify-content:flex-end; }
+          .resume-result-toolbar { flex-direction: column; align-items: flex-start; }
         }
       `}</style>
     </div>
