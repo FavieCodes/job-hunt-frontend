@@ -69,6 +69,35 @@ export const userAPI = {
     return data;
   },
 
+  getSavedScholarships: async (): Promise<any[]> => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = JSON.parse(localStorage.getItem('saved_scholarships') || '[]');
+      return saved.map((id: string) => ({ id }));
+    } catch { return []; }
+  },
+
+  saveScholarship: async (scholarshipId: string): Promise<{ message: string }> => {
+    if (typeof window !== 'undefined') {
+      const saved = JSON.parse(localStorage.getItem('saved_scholarships') || '[]');
+      if (!saved.includes(scholarshipId)) {
+        saved.push(scholarshipId);
+        localStorage.setItem('saved_scholarships', JSON.stringify(saved));
+      }
+    }
+    return { message: 'Saved' };
+  },
+
+  removeSavedScholarship: async (scholarshipId: string): Promise<{ message: string }> => {
+    if (typeof window !== 'undefined') {
+      let saved = JSON.parse(localStorage.getItem('saved_scholarships') || '[]');
+      saved = saved.filter((id: string) => id !== scholarshipId);
+      localStorage.setItem('saved_scholarships', JSON.stringify(saved));
+    }
+    return { message: 'Removed' };
+  },
+
+
   getApplicationStats: async (): Promise<ApplicationStats> => {
     const { data } = await api.get<ApplicationStats>('/user/stats');
     return data;

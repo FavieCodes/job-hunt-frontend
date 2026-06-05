@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { scholarshipsAPI, adminScholarshipsAPI } from '@/lib';
+import { scholarshipsAPI, adminScholarshipsAPI, userAPI } from '@/lib';
 import { getUser } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -120,10 +120,24 @@ export default function ScholarshipsPage() {
   const [showAddModal, setShowAddModal]     = useState(false);
   const [addForm, setAddForm]               = useState<AddScholarshipForm>(emptyForm);
   const [submitting, setSubmitting]         = useState(false);
+  const [savedScholarships, setSavedScholarships] = useState<Set<string>>(new Set());
+  const [savingId, setSavingId]                   = useState<string | null>(null);
 
   useEffect(() => { setUser(getUser()); }, []);
 
-  useEffect(() => { fetchScholarships(); }, [filters, user]);
+  useEffect(() => {
+    fetchScholarships();
+    if (user && user.role !== 'admin') {
+      fetchSavedScholarships();
+    }
+  }, [filters, user]);
+
+  const fetchSavedScholarships = async () => {
+    try {
+      const saved = await userAPI.getSavedScholarships();
+      setSavedScholarships(new Set(saved.map((s: any) => s.id)));
+    } catch {}
+  };
 
   const isAdmin = user?.role === 'admin';
 
@@ -174,6 +188,26 @@ export default function ScholarshipsPage() {
   const handlePageChange = (page: number) => {
     setFilters((prev) => ({ ...prev, page }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSave = async (scholarshipId: string) => {
+    if (savingId === scholarshipId) return;
+    setSavingId(scholarshipId);
+    try {
+      if (savedScholarships.has(scholarshipId)) {
+        await userAPI.removeSavedScholarship(scholarshipId);
+        setSavedScholarships((prev) => { const s = new Set(prev); s.delete(scholarshipId); return s; });
+        toast.success('Removed from saved');
+      } else {
+        await userAPI.saveScholarship(scholarshipId);
+        setSavedScholarships((prev) => new Set([...prev, scholarshipId]));
+        toast.success('Scholarship saved!');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Action failed');
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const getDeadlineStatus = (deadline: string) => {
@@ -306,8 +340,13 @@ export default function ScholarshipsPage() {
                       <a href={scholarship.apply_url} target="_blank" rel="noopener noreferrer" className="apply-btn">
                         <i className="fas fa-external-link-alt"></i> Apply Now
                       </a>
-                      <button className="save-btn">
-                        <i className="far fa-bookmark"></i>
+                      <button
+                        className={`save-btn ${savedScholarships.has(scholarship.id) ? 'saved' : ''}`}
+                        onClick={() => handleSave(scholarship.id)}
+                        disabled={savingId === scholarship.id}
+                        title={savedScholarships.has(scholarship.id) ? 'Remove from saved' : 'Save scholarship'}
+                      >
+                        <i className={savedScholarships.has(scholarship.id) ? 'fas fa-bookmark' : 'far fa-bookmark'}></i>
                       </button>
                     </>
                   )}
@@ -412,6 +451,7 @@ export default function ScholarshipsPage() {
         .engagement-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .85rem; border-radius:2rem; font-size:.8rem; font-weight:600; }
         .applied-badge { background:#dbeafe; color:#1e40af; }
         .saved-badge   { background:#ede9fe; color:#6d28d9; }
+        .save-btn.saved i { color: #06b6d4; }
 
         /* ── Pagination ──────────────────────────────────────────────────── */
         .pagination-wrapper {
