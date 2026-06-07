@@ -92,6 +92,11 @@ export const applicationsAPI = {
     return data;
   },
 
+  deleteApplication: async (applicationId: string): Promise<{ message: string }> => {
+  const { data } = await api.delete(`/user/applications/${applicationId}`);
+  return data;
+},
+
   applyForScholarship: async (scholarshipId: string): Promise<Application> => {
   const { data } = await api.post<Application>('/user/applications', {
     scholarship_id: scholarshipId,

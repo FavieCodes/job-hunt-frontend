@@ -156,6 +156,99 @@ function StatusDropdown({
   );
 }
 
+// ── Delete Confirmation Modal ─────────────────────────────────────────────────
+function DeleteConfirmModal({
+  application,
+  onClose,
+  onConfirm,
+}: {
+  application: Application | null;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    await onConfirm();
+    setDeleting(false);
+  };
+
+  if (!application) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card delete-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2 style={{ color: '#dc2626' }}>
+            <i className="fas fa-trash-alt"></i> Delete Application
+          </h2>
+          <button onClick={onClose} className="modal-close-btn" aria-label="Close">
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <div className="delete-warning">
+            <i className="fas fa-exclamation-triangle"></i>
+            <p>Are you sure you want to delete this application?</p>
+          </div>
+
+          <div className="delete-app-preview">
+            <div className="delete-app-icon">
+              <i className={`fas ${TYPE_CONFIG[application.application_type]?.icon || 'fa-file-alt'}`}></i>
+            </div>
+            <div className="delete-app-info">
+              <div className="delete-app-title">{application.title}</div>
+              {application.company && (
+                <div className="delete-app-company">{application.company}</div>
+              )}
+              {application.application_type && (
+                <span className="delete-app-type">
+                  {TYPE_CONFIG[application.application_type]?.label || application.application_type}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <p className="delete-confirm-text">
+            This action <strong>cannot be undone</strong>. This application will be permanently removed.
+          </p>
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="modal-cancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button 
+            type="button" 
+            className="modal-submit delete-btn" 
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <>
+                <i className="fas fa-spinner fa-spin"></i> Deleting...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-trash-alt"></i> Delete Application
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Add Manual Application Modal ──────────────────────────────────────────────
 function AddManualModal({
   onClose,
@@ -307,6 +400,8 @@ export default function ApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | AppType>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -336,6 +431,31 @@ export default function ApplicationsPage() {
     }
   };
 
+  const handleDeleteClick = (app: Application) => {
+    setSelectedApp(app);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedApp) return;
+    
+    try {
+      await applicationsAPI.deleteApplication(selectedApp.id);
+      toast.success('Application deleted successfully');
+      setApplications((prev) => prev.filter((a) => a.id !== selectedApp.id));
+      setShowDeleteModal(false);
+      setSelectedApp(null);
+      
+      // Adjust current page if needed
+      const newTotalPages = Math.ceil((applications.length - 1) / ITEMS_PER_PAGE);
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete application');
+    }
+  };
+
   const handleAdded = (app: Application) => {
     // Normalise manual app from raw DB row
     const normalised: Application = {
@@ -357,10 +477,9 @@ export default function ApplicationsPage() {
     setCurrentPage(1);
   };
 
-  const filtered =
-    activeTab === 'all'
-      ? applications
-      : applications.filter((a) => a.application_type === activeTab);
+  const filtered = activeTab === 'all'
+    ? applications
+    : applications.filter((a) => a.application_type === activeTab);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginatedApps = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -383,6 +502,16 @@ export default function ApplicationsPage() {
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
       {showAddModal && <AddManualModal onClose={() => setShowAddModal(false)} onAdded={handleAdded} />}
+      {showDeleteModal && selectedApp && (
+        <DeleteConfirmModal
+          application={selectedApp}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedApp(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
 
       {/* Header */}
       <div className="apps-header">
@@ -569,13 +698,22 @@ export default function ApplicationsPage() {
                     )}
                   </div>
 
-                  {/* Right: status dropdown */}
+                  {/* Right: status dropdown and delete button */}
                   <div className="app-card-right">
-                    <StatusDropdown
-                      appId={app.id}
-                      current={app.status}
-                      onChange={handleStatusChange}
-                    />
+                    <div className="app-card-actions">
+                      <StatusDropdown
+                        appId={app.id}
+                        current={app.status}
+                        onChange={handleStatusChange}
+                      />
+                      <button
+                        className="delete-app-btn"
+                        onClick={() => handleDeleteClick(app)}
+                        title="Delete application"
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -804,6 +942,115 @@ export default function ApplicationsPage() {
         .app-card-right {
           flex-shrink: 0;
         }
+        
+        .app-card-actions {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        /* Delete button */
+        .delete-app-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          background: var(--color-bg);
+          border: 1px solid var(--color-border);
+          border-radius: 0.5rem;
+          cursor: pointer;
+          color: #9ca3af;
+          transition: all 0.2s;
+        }
+        .delete-app-btn:hover {
+          background: #fee2e2;
+          border-color: #ef4444;
+          color: #ef4444;
+        }
+        .delete-app-btn i {
+          font-size: 0.85rem;
+        }
+
+        /* Delete Modal Styles */
+        .delete-modal .modal-head {
+          border-bottom: 1px solid var(--color-border);
+        }
+        .delete-warning {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1rem;
+          background: #fef3c7;
+          border-radius: 0.75rem;
+          margin-bottom: 1.25rem;
+          color: #92400e;
+        }
+        .delete-warning i {
+          font-size: 1.5rem;
+          color: #f59e0b;
+        }
+        .delete-warning p {
+          margin: 0;
+          font-weight: 600;
+          font-size: 0.9rem;
+        }
+        .delete-app-preview {
+          display: flex;
+          gap: 1rem;
+          padding: 1rem;
+          background: var(--color-bg);
+          border-radius: 0.75rem;
+          margin-bottom: 1rem;
+          border: 1px solid var(--color-border);
+        }
+        .delete-app-icon {
+          width: 48px;
+          height: 48px;
+          background: linear-gradient(135deg, #06b6d4, #1e3a8a);
+          border-radius: 0.75rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 1.25rem;
+        }
+        .delete-app-info {
+          flex: 1;
+        }
+        .delete-app-title {
+          font-weight: 700;
+          font-size: 1rem;
+          color: var(--color-text);
+          margin-bottom: 0.25rem;
+        }
+        .delete-app-company {
+          font-size: 0.85rem;
+          color: var(--color-text-muted);
+          margin-bottom: 0.5rem;
+        }
+        .delete-app-type {
+          display: inline-block;
+          padding: 0.2rem 0.6rem;
+          background: var(--color-surface-2);
+          border-radius: 0.5rem;
+          font-size: 0.75rem;
+          color: var(--color-text-muted);
+        }
+        .delete-confirm-text {
+          font-size: 0.85rem;
+          color: var(--color-text-muted);
+          margin: 0;
+        }
+        .delete-confirm-text strong {
+          color: #ef4444;
+        }
+        .modal-submit.delete-btn {
+          background: #dc2626;
+        }
+        .modal-submit.delete-btn:hover {
+          background: #b91c1c;
+        }
 
         /* ── Status dropdown ─────────────────────────────────────────────── */
         .status-badge-btn {
@@ -921,6 +1168,9 @@ export default function ApplicationsPage() {
           padding: 0 1.5rem;
           margin-bottom: 1.25rem;
           line-height: 1.5;
+        }
+        .modal-body {
+          padding: 0 1.5rem;
         }
         .modal-form-grid {
           display: grid;
@@ -1074,6 +1324,10 @@ export default function ApplicationsPage() {
           }
           .app-card-right {
             width: 100%;
+          }
+          .app-card-actions {
+            width: 100%;
+            justify-content: flex-end;
           }
         }
       `}</style>
