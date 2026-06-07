@@ -7,3 +7,4 @@ export * from './admin';
 export * from './scraper';
 export * from './resume';
 export * from './applications';
+export * from './interview';

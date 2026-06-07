@@ -4,53 +4,7 @@ import { getUser } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface Question {
-  question: string;
-  tip: string;
-}
-
-interface Video {
-  title: string;
-  url: string;
-}
-
-interface PrepResult {
-  id: string;
-  job_role: string;
-  interview_type: string;
-  questions: Question[];
-  videos: Video[];
-  created_at: string;
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const FIELDS = [
-  { label: 'Software Engineering',     icon: 'fa-code' },
-  { label: 'Data Science & Analytics', icon: 'fa-chart-bar' },
-  { label: 'Product Management',       icon: 'fa-layer-group' },
-  { label: 'UI/UX Design',             icon: 'fa-paint-brush' },
-  { label: 'DevOps & Cloud',           icon: 'fa-server' },
-  { label: 'Cybersecurity',            icon: 'fa-shield-alt' },
-  { label: 'Marketing',                icon: 'fa-bullhorn' },
-  { label: 'Finance & Accounting',     icon: 'fa-coins' },
-  { label: 'Human Resources',          icon: 'fa-users' },
-  { label: 'Sales',                    icon: 'fa-handshake' },
-  { label: 'Healthcare',               icon: 'fa-heartbeat' },
-  { label: 'Legal',                    icon: 'fa-gavel' },
-  { label: 'Custom…',                  icon: 'fa-edit' },
-];
-
-const INTERVIEW_TYPES = [
-  { value: 'Technical',        label: 'Technical',        icon: 'fa-laptop-code',   desc: 'Coding, algorithms & system design' },
-  { value: 'Behavioral',       label: 'Behavioral',       icon: 'fa-comments',       desc: 'Soft skills & past experience' },
-  { value: 'Case Study',       label: 'Case Study',       icon: 'fa-briefcase',      desc: 'Problem-solving & business cases' },
-  { value: 'HR / Culture Fit', label: 'HR / Culture Fit', icon: 'fa-user-check',     desc: 'Values, culture & motivation' },
-  { value: 'Portfolio Review', label: 'Portfolio Review', icon: 'fa-folder-open',    desc: 'Presenting your previous work' },
-];
+import { PrepResult, FIELDS, INTERVIEW_TYPES } from '@/lib';
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -110,7 +64,6 @@ export default function InterviewPrepPage() {
         job_role: resolvedField,
         interview_type: interviewType,
       });
-      // The API returns the DB row; questions/videos may be JSON strings or already parsed
       const parsed: PrepResult = {
         ...data,
         questions: typeof data.questions === 'string' ? JSON.parse(data.questions) : data.questions,
@@ -127,15 +80,8 @@ export default function InterviewPrepPage() {
     }
   };
 
-  const loadFromHistory = (item: PrepResult) => {
-    const parsed: PrepResult = {
-      ...item,
-      questions: typeof item.questions === 'string' ? JSON.parse(item.questions) : item.questions,
-      videos:    typeof item.videos    === 'string' ? JSON.parse(item.videos)    : item.videos,
-    };
-    setResult(parsed);
-    setActiveTab('generate');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const goToDetail = (id: string) => {
+    router.push(`/interview/${id}`);
   };
 
   if (!user) return null;
@@ -322,7 +268,11 @@ export default function InterviewPrepPage() {
               {history.map((item) => {
                 const qs = typeof item.questions === 'string' ? JSON.parse(item.questions) : item.questions;
                 return (
-                  <div key={item.id} className="history-card" onClick={() => loadFromHistory(item)}>
+                  <div
+                    key={item.id}
+                    className="history-card"
+                    onClick={() => goToDetail(item.id)}
+                  >
                     <div className="history-card-top">
                       <h4 className="history-job-role">{item.job_role}</h4>
                       <span className="history-type-badge">{item.interview_type}</span>

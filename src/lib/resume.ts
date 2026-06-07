@@ -8,11 +8,16 @@ export interface EducationEntry {
   startDate: string; endDate: string; gpa: string;
 }
 
+export interface ProjectEntry {
+  id: string; name: string; description: string; technologies: string;
+  github_url: string; live_url: string 
+}
+
 export interface ResumeForm {
   title: string; fullName: string; email: string; phone: string;
-  location: string; linkedin: string; website: string; summary: string;
+  location: string; linkedin: string; github: string; website: string; summary: string;
   skills: string; experience: ExperienceEntry[]; education: EducationEntry[];
-  certifications: string; languages: string;
+  projects: ProjectEntry[]; certifications: string; languages: string;
 }
 
 export interface SavedResume {
