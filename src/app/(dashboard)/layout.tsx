@@ -102,6 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: '/saved',        icon: 'fa-bookmark',       label: 'Saved Items' },
         { href: '/interview',    icon: 'fa-comments',       label: 'Interview Prep' },
         { href: '/resume',       icon: 'fa-file-alt',       label: 'Resume Builder' },
+        { href: '/portfolio',    icon: 'fa-globe',           label: 'Portfolio Builder' },
       ];
 
   const avatarSrc =
@@ -114,7 +115,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
 
-        {/* Header row: logo + close button */}
+      
         <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" className="logo" style={{ textDecoration: 'none' }}>
             <i className="fas fa-briefcase"></i>

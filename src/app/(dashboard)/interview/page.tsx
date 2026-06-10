@@ -74,7 +74,11 @@ export default function InterviewPrepPage() {
       setExpandedQ(null);
       toast.success('Interview prep ready!');
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to generate prep. Try again.');
+      if (err?.response?.status === 429 || err?.response?.data?.error === 'daily_limit_reached') {
+        router.push('/payment?feature=interview');
+        return;
+      }
+      toast.error(err?.response?.data?.message || err?.response?.data?.error || 'Failed to generate prep. Try again.');
     } finally {
       setGenerating(false);
     }
@@ -107,7 +111,7 @@ export default function InterviewPrepPage() {
 
       {/* ════════════════════ GENERATE TAB ════════════════════ */}
       {activeTab === 'generate' && (
-        <div className="generate-layout">
+        <div className="generate-layout" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: "1.5rem", alignItems: "start" }}>
 
           {/* Left — form */}
           <div className="form-panel">
@@ -176,7 +180,7 @@ export default function InterviewPrepPage() {
           </div>
 
           {/* Right — results */}
-          <div className="results-panel">
+          <div className="results-panel" style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "1rem", padding: "1.5rem", minHeight: "400px", display: "flex", flexDirection: "column" }}>
             {generating && (
               <div className="generating-state">
                 <div className="pulse-ring"></div>
@@ -290,7 +294,7 @@ export default function InterviewPrepPage() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .page-header { margin-bottom: 1.5rem; }
         .page-header h1 { font-size: 2rem; color: var(--color-text); margin-bottom: .4rem; }
         .page-header p { color: var(--color-text-muted); }

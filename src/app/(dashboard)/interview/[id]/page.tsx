@@ -14,6 +14,8 @@ export default function InterviewDetailPage() {
   const [prep, setPrep] = useState<PrepResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedQ, setExpandedQ] = useState<number | null>(null);
+  const [aiAnswers, setAiAnswers] = useState<Record<number, string>>({});
+  const [loadingAnswer, setLoadingAnswer] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) fetchInterviewPrep();
@@ -33,6 +35,33 @@ export default function InterviewDetailPage() {
       router.push('/interview');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateAnswer = async (question: string, tip: string, index: number) => {
+    if (aiAnswers[index]) return; // already loaded
+    setLoadingAnswer(index);
+    try {
+      const { data } = await api.post('/interview/generate-answer', {
+        question,
+        tip,
+        job_role: prep?.job_role,
+        interview_type: prep?.interview_type,
+      });
+      setAiAnswers((prev) => ({ ...prev, [index]: data.answer }));
+    } catch {
+      setAiAnswers((prev) => ({ ...prev, [index]: 'Could not generate an answer. Please try again.' }));
+    } finally {
+      setLoadingAnswer(null);
+    }
+  };
+
+  // Auto-generate answer when a question is expanded
+  const handleExpandQ = (i: number, question: string, tip: string) => {
+    const next = expandedQ === i ? null : i;
+    setExpandedQ(next);
+    if (next !== null && !aiAnswers[i]) {
+      generateAnswer(question, tip, i);
     }
   };
 
@@ -84,7 +113,7 @@ export default function InterviewDetailPage() {
         <div className="questions-list">
           {prep.questions.map((q, i) => (
             <div key={i} className={`question-item ${expandedQ === i ? 'open' : ''}`}>
-              <button className="question-header" onClick={() => setExpandedQ(expandedQ === i ? null : i)}>
+              <div className="question-header" onClick={() => handleExpandQ(i, q.question, q.tip)} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleExpandQ(i, q.question, q.tip)}>
                 <span className="q-num">{i + 1}</span>
                 <span className="q-text">{q.question}</span>
                 <div className="question-actions">
@@ -97,21 +126,49 @@ export default function InterviewDetailPage() {
                   </button>
                   <i className={`fas fa-chevron-${expandedQ === i ? 'up' : 'down'}`}></i>
                 </div>
-              </button>
+              </div>
               {expandedQ === i && (
-                <div className="question-tip">
-                  <i className="fas fa-lightbulb"></i>
-                  <div>
-                    <strong>💡 Tip:</strong>
-                    <p>{q.tip}</p>
+                <div className="question-expanded">
+                  {/* Tip row */}
+                  <div className="question-tip">
+                    <i className="fas fa-lightbulb"></i>
+                    <div style={{ flex: 1 }}>
+                      <strong>💡 Tip:</strong>
+                      <p>{q.tip}</p>
+                    </div>
+                    <button
+                      className="copy-tip-btn"
+                      onClick={() => copyToClipboard(q.tip)}
+                      title="Copy tip"
+                    >
+                      <i className="fas fa-copy"></i>
+                    </button>
                   </div>
-                  <button 
-                    className="copy-tip-btn" 
-                    onClick={() => copyToClipboard(q.tip)}
-                    title="Copy tip"
-                  >
-                    <i className="fas fa-copy"></i>
-                  </button>
+
+                  {/* AI Answer row */}
+                  <div className="ai-answer-section">
+                    <div className="ai-answer-header">
+                      <i className="fas fa-robot"></i>
+                      <span>AI Sample Answer</span>
+                      {aiAnswers[i] && (
+                        <button
+                          className="copy-tip-btn"
+                          onClick={() => copyToClipboard(aiAnswers[i])}
+                          title="Copy answer"
+                          style={{ marginLeft: 'auto' }}
+                        >
+                          <i className="fas fa-copy"></i>
+                        </button>
+                      )}
+                    </div>
+                    {loadingAnswer === i ? (
+                      <div className="ai-answer-loading">
+                        <i className="fas fa-spinner fa-spin"></i> Generating answer…
+                      </div>
+                    ) : aiAnswers[i] ? (
+                      <p className="ai-answer-text">{aiAnswers[i]}</p>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>
@@ -140,7 +197,7 @@ export default function InterviewDetailPage() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .back-row {
           display: flex;
           align-items: center;
@@ -246,7 +303,7 @@ export default function InterviewDetailPage() {
         .question-item.open {
           border-color: #06b6d4;
         }
-        .question-header {
+        .question-header { cursor: pointer;
           width: 100%;
           display: flex;
           align-items: center;
@@ -395,6 +452,37 @@ export default function InterviewDetailPage() {
           color: var(--color-text-muted);
           font-size: .8rem;
           flex-shrink: 0;
+        }
+        .question-expanded { border-top: 1px solid var(--color-border); }
+        .ai-answer-section {
+          padding: 1rem;
+          background: #f0f4ff;
+          border-top: 1px solid #c7d7fe;
+        }
+        .ai-answer-header {
+          display: flex;
+          align-items: center;
+          gap: .5rem;
+          font-size: .8rem;
+          font-weight: 700;
+          color: #3730a3;
+          margin-bottom: .6rem;
+        }
+        .ai-answer-header i { color: #6366f1; font-size: .95rem; }
+        .ai-answer-text {
+          font-size: .875rem;
+          color: #1e1b4b;
+          line-height: 1.7;
+          white-space: pre-wrap;
+          word-break: break-word;
+          margin: 0;
+        }
+        .ai-answer-loading {
+          font-size: .85rem;
+          color: #6366f1;
+          display: flex;
+          align-items: center;
+          gap: .5rem;
         }
         @media (max-width: 640px) {
           .job-role-title {

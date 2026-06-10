@@ -8,7 +8,6 @@ export default function LandingPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -27,7 +26,11 @@ export default function LandingPage() {
     
     // Handle scroll effect
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      const nav = document.getElementById('main-nav');
+      if (nav) {
+        if (window.scrollY > 50) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+      }
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -43,7 +46,7 @@ export default function LandingPage() {
   return (
     <div className="landing-page">
       {/* Navbar */}
-      <nav className={`navbar-landing ${scrolled ? 'scrolled' : ''}`}>
+      <nav className="navbar-landing" id="main-nav" suppressHydrationWarning>
         <div className="nav-container">
           <div className="logo">
             <i className="fas fa-briefcase"></i>

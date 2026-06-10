@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import toast from 'react-hot-toast';
@@ -168,6 +169,7 @@ const downloadPDF = (html: string, fileName: string) => {
 type ActiveTab = 'build' | 'tailor' | 'history';
 
 export default function ResumeBuilderPage() {
+  const router = useRouter(); // ✅ Added missing router initialization
   const user = getUser();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('build');
@@ -231,7 +233,11 @@ export default function ResumeBuilderPage() {
       toast.success('Resume generated and saved! 🎉');
       fetchHistory();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to generate resume');
+      if (err?.response?.data?.error === 'daily_limit_reached') {
+        router.push('/payment?feature=resume');
+        return;
+      }
+      toast.error(err?.response?.data?.message || err.response?.data?.error || 'Failed to generate resume');
     } finally { setGenerating(false); }
   };
 
@@ -276,7 +282,11 @@ export default function ResumeBuilderPage() {
       toast.success('Resume tailored and saved! 🎯');
       fetchHistory();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to tailor resume. Check your AI API keys.');
+      if (err?.response?.data?.error === 'daily_limit_reached') {
+        router.push('/payment?feature=resume');
+        return;
+      }
+      toast.error(err?.response?.data?.message || err.response?.data?.error || 'Failed to tailor resume. Check your AI API keys.');
     } finally { setTailoring(false); }
   };
 
