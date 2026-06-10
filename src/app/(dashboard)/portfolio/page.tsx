@@ -54,9 +54,13 @@ export default function PortfolioPage() {
   const [history, setHistory] = useState<PortfolioRecord[]>([]);
   const [viewHtml, setViewHtml] = useState<string | null>(null);
   const [cvParsing, setCvParsing] = useState(false);
+
+  // Resume modal — show immediately, fetch details in background
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [latestResume, setLatestResume] = useState<any>(null);
   const [loadingFromResume, setLoadingFromResume] = useState(false);
+  // Track whether we're enriching the resume record with form_data in background
+  const [enrichedResume, setEnrichedResume] = useState<any>(null);
 
   const [info, setInfo] = useState<PortfolioInfo>({
     fullName: '', title: '', email: '', phone: '', location: '',
@@ -74,34 +78,38 @@ export default function PortfolioPage() {
 
   const checkExistingResume = async () => {
     try {
+      // Step 1: fetch history list — fast, show modal immediately if resume exists
       const { data } = await api.get('/resume/history');
       if (data && data.length > 0) {
-        // Fetch the full resume record including form_data
-        try {
-          const { data: full } = await api.get(`/resume/${data[0].id}`);
-          setLatestResume(full || data[0]);
-        } catch {
-          setLatestResume(data[0]);
-        }
-        setShowResumeModal(true);
+        setLatestResume(data[0]);
+        setShowResumeModal(true); // show modal right away with basic info
+
+        // Step 2: enrich with full form_data in the background (non-blocking)
+        api.get(`/resume/${data[0].id}`)
+          .then(({ data: full }) => {
+            if (full) setEnrichedResume(full);
+          })
+          .catch(() => {/* use base record if this fails */});
       }
     } catch { /* silent */ }
   };
 
   const buildFromResume = async () => {
-    if (!latestResume) return;
     setLoadingFromResume(true);
     setShowResumeModal(false);
+
+    // Use enriched record if available, fall back to basic history record
+    const resumeRecord = enrichedResume || latestResume;
+
     try {
       // PRIMARY: use structured form_data saved when the resume was generated
-      const fd = latestResume.form_data
-        ? (typeof latestResume.form_data === 'string'
-            ? JSON.parse(latestResume.form_data)
-            : latestResume.form_data)
+      const fd = resumeRecord?.form_data
+        ? (typeof resumeRecord.form_data === 'string'
+            ? JSON.parse(resumeRecord.form_data)
+            : resumeRecord.form_data)
         : null;
 
       if (fd) {
-        // Map resume form_data fields directly onto portfolio info
         const mapped: Partial<PortfolioInfo> = {
           fullName:       fd.fullName || fd.full_name || '',
           title:          fd.title || fd.targetRole || '',
@@ -112,46 +120,44 @@ export default function PortfolioPage() {
           github:         fd.github || '',
           website:        fd.website || '',
           summary:        fd.summary || '',
-          skills:         Array.isArray(fd.skills)
-                            ? fd.skills.map((s: any) => (typeof s === 'string' ? s : s.name || s.skill || '')).join(', ')
-                            : (fd.skills || ''),
-          experience:     Array.isArray(fd.experience) && fd.experience.length > 0
-                            ? fd.experience.map((e: any) => ({
-                                company:     e.company || '',
-                                role:        e.title || e.role || '',
-                                period:      e.period || e.dates || '',
-                                description: Array.isArray(e.bullets)
-                                               ? e.bullets.join(' ')
-                                               : (e.description || e.bullets || ''),
-                              }))
-                            : [{ company: '', role: '', period: '', description: '' }],
-          projects:       Array.isArray(fd.projects) && fd.projects.length > 0
-                            ? fd.projects.map((p: any) => ({
-                                name:         p.name || '',
-                                description:  p.description || '',
-                                technologies: p.technologies || p.tech || '',
-                                url:          p.url || '',
-                              }))
-                            : [{ name: '', description: '', technologies: '', url: '' }],
-          education:      Array.isArray(fd.education) && fd.education.length > 0
-                            ? fd.education.map((e: any) => ({
-                                institution: e.institution || e.school || '',
-                                degree:      e.degree || '',
-                                period:      e.period || e.dates || '',
-                              }))
-                            : [{ institution: '', degree: '', period: '' }],
+          skills: Array.isArray(fd.skills)
+            ? fd.skills.map((s: any) => (typeof s === 'string' ? s : s.name || s.skill || '')).join(', ')
+            : (fd.skills || ''),
+          experience: Array.isArray(fd.experience) && fd.experience.length > 0
+            ? fd.experience.map((e: any) => ({
+                company:     e.company || '',
+                role:        e.title || e.role || '',
+                period:      e.period || e.dates || '',
+                description: Array.isArray(e.bullets) ? e.bullets.join(' ') : (e.description || ''),
+              }))
+            : [EMPTY_EXP()],
+          projects: Array.isArray(fd.projects) && fd.projects.length > 0
+            ? fd.projects.map((p: any) => ({
+                name:         p.name || '',
+                description:  p.description || '',
+                technologies: p.technologies || p.tech || '',
+                url:          p.url || '',
+              }))
+            : [EMPTY_PROJ()],
+          education: Array.isArray(fd.education) && fd.education.length > 0
+            ? fd.education.map((e: any) => ({
+                institution: e.institution || e.school || '',
+                degree:      e.degree || '',
+                period:      e.period || e.dates || '',
+              }))
+            : [EMPTY_EDU()],
           certifications: Array.isArray(fd.certifications)
-                            ? fd.certifications.map((c: any) => (typeof c === 'string' ? c : c.name || '')).join(', ')
-                            : (fd.certifications || ''),
+            ? fd.certifications.map((c: any) => (typeof c === 'string' ? c : c.name || '')).join(', ')
+            : (fd.certifications || ''),
         };
         setInfo((prev) => ({ ...prev, ...mapped }));
-        toast.success('Resume loaded! Review your info then generate.');
-        setStep(1);
+        toast.success('Resume loaded! Ready to generate your portfolio.');
+        setStep(5); // ← go straight to generate step
         return;
       }
 
       // FALLBACK: strip HTML tags from generated_html and send to parse-cv
-      const rawHtml = latestResume.generated_html || '';
+      const rawHtml = resumeRecord?.generated_html || '';
       if (rawHtml.length > 100) {
         const text = rawHtml
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
@@ -168,20 +174,23 @@ export default function PortfolioPage() {
           const { data } = await api.post('/portfolio/parse-cv', { cvText: text.slice(0, 6000) });
           if (data) {
             setInfo((prev) => ({ ...prev, ...data }));
-            toast.success('Resume info loaded! Review and edit before generating.');
-            setStep(1);
+            toast.success('Resume info loaded! Ready to generate your portfolio.');
+            setStep(5); // ← go straight to generate step
             return;
           }
         }
       }
 
-      // LAST RESORT: just go to the form with nothing pre-filled
-      toast('Could not extract resume data automatically. Please fill in your details.');
-      setStep(1);
+      // LAST RESORT: go to generate step with whatever we have (at minimum fullName from history)
+      if (resumeRecord?.full_name) {
+        setInfo((prev) => ({ ...prev, fullName: resumeRecord.full_name }));
+      }
+      toast('Pre-filled what we could. You can edit on the previous steps if needed.');
+      setStep(5);
     } catch (err: any) {
       console.error('buildFromResume error:', err);
-      toast.error('Something went wrong loading your resume. Please fill in manually.');
-      setStep(1);
+      toast.error('Something went wrong. Taking you to the generate step anyway.');
+      setStep(5);
     } finally {
       setLoadingFromResume(false);
     }
@@ -222,8 +231,6 @@ export default function PortfolioPage() {
       } else {
         text = await file.text();
       }
-
-      // Ask AI to parse the CV text into structured data
       const { data } = await api.post('/portfolio/parse-cv', { cvText: text.slice(0, 6000) });
       if (data) {
         setInfo((prev) => ({ ...prev, ...data }));
@@ -253,11 +260,11 @@ export default function PortfolioPage() {
       toast.success('Portfolio generated!');
       fetchHistory();
     } catch (err: any) {
-      if (err?.response?.data?.error === 'daily_limit_reached') {
+      if (err?.response?.status === 429 || err?.response?.data?.error === 'daily_limit_reached') {
         router.push('/payment?feature=portfolio');
         return;
       }
-      toast.error(err?.response?.data?.message || 'Failed to generate portfolio');
+      toast.error(err?.response?.data?.message || err?.response?.data?.error || 'Failed to generate portfolio');
     } finally {
       setGenerating(false);
     }
@@ -291,7 +298,7 @@ export default function PortfolioPage() {
     }
   };
 
-  // ── Preview / view modal ──────────────────────────────────────────────────
+  // ── Preview / view fullscreen ─────────────────────────────────────────────
 
   if (viewHtml) {
     return (
@@ -347,7 +354,7 @@ export default function PortfolioPage() {
 
   return (
     <div className="port-page">
-      {/* Resume Modal */}
+      {/* Resume Modal — renders as soon as latestResume is set */}
       {showResumeModal && latestResume && (
         <div className="port-resume-modal-overlay" onClick={() => setShowResumeModal(false)}>
           <div className="port-resume-modal" onClick={(e) => e.stopPropagation()}>
@@ -356,8 +363,8 @@ export default function PortfolioPage() {
             </div>
             <h2>Use Your Existing Resume?</h2>
             <p>
-              We found your resume <strong>&ldquo;{latestResume.title}&rdquo;</strong> on your account.
-              Would you like us to build your portfolio using that information?
+              We found your resume <strong>&ldquo;{latestResume.title || 'My Resume'}&rdquo;</strong> on your account.
+              Would you like us to build your portfolio from that information?
             </p>
             <div className="port-modal-actions">
               <button
@@ -366,7 +373,7 @@ export default function PortfolioPage() {
                 disabled={loadingFromResume}
               >
                 {loadingFromResume
-                  ? <><i className="fas fa-spinner fa-spin"></i> Loading…</>
+                  ? <><i className="fas fa-spinner fa-spin"></i> Loading your resume…</>
                   : <><i className="fas fa-check"></i> Yes, use my resume</>}
               </button>
               <button
@@ -652,7 +659,6 @@ export default function PortfolioPage() {
         .port-badge { background: #ef4444; color: white; border-radius: 2rem; padding: .1rem .5rem; font-size: .7rem; }
         .port-step-bar { display: flex; align-items: center; gap: 0; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: .5rem; }
         .port-step-dot { display: flex; flex-direction: column; align-items: center; gap: .3rem; flex: 1; min-width: 60px; }
-        .port-step-dot:not(:last-child)::after { content: ''; display: block; height: 2px; width: 100%; background: var(--color-border); position: absolute; }
         .port-dot { width: 30px; height: 30px; border-radius: 50%; background: var(--color-border); color: var(--color-text-muted); display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; transition: all .2s; }
         .port-step-dot.active .port-dot { background: linear-gradient(135deg,#06b6d4,#1e3a8a); color: white; }
         .port-step-dot.done .port-dot { background: #16a34a; color: white; }
@@ -662,7 +668,7 @@ export default function PortfolioPage() {
         .port-step-title { font-size: 1.15rem; font-weight: 800; color: var(--color-text); margin-bottom: 1.25rem; padding-bottom: .75rem; border-bottom: 2px solid var(--color-border); }
         .port-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .port-field { display: flex; flex-direction: column; gap: .4rem; margin-bottom: .25rem; }
-        .port-field label { font-size: .8rem; font-weight: 600; color: var(--color-text-muted); }
+        .port-field label { font-size: .8rem; font-weight: 600; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .03em; }
         .port-field input, .port-field textarea { padding: .65rem .85rem; border: 1.5px solid var(--color-border); border-radius: .6rem; background: var(--color-bg); color: var(--color-text); font-size: .9rem; transition: border-color .2s; resize: vertical; font-family: inherit; }
         .port-field input:focus, .port-field textarea:focus { outline: none; border-color: #06b6d4; }
         .port-entry-block { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: .75rem; padding: 1.25rem; margin-bottom: 1rem; }
@@ -713,8 +719,10 @@ export default function PortfolioPage() {
         .port-hist-actions button:hover { border-color: #06b6d4; color: #06b6d4; }
         .port-hist-actions button.danger:hover { border-color: #ef4444; color: #ef4444; }
         /* Resume modal */
-        .port-resume-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
-        .port-resume-modal { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1.25rem; padding: 2rem; max-width: 480px; width: 100%; position: relative; text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,.2); }
+        .port-resume-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); animation: fadeIn .15s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .port-resume-modal { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 1.25rem; padding: 2rem; max-width: 480px; width: 100%; position: relative; text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,.2); animation: slideUp .2s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .port-modal-icon { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg,#06b6d4,#1e3a8a); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.6rem; margin: 0 auto 1.25rem; }
         .port-resume-modal h2 { font-size: 1.25rem; font-weight: 800; color: var(--color-text); margin-bottom: .6rem; }
         .port-resume-modal > p { font-size: .9rem; color: var(--color-text-muted); line-height: 1.6; margin-bottom: 1.5rem; }

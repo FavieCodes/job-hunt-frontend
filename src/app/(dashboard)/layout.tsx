@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { getUser, logout } from '@/lib/auth';
@@ -15,6 +15,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobileMenuOpen, setMobileMenu]   = useState(false);
   const [isScraping, setIsScraping]         = useState(false);
+  const [routeLoading, setRouteLoading]     = useState(false);
+  const [progress, setProgress]             = useState(0);
+  const progressTimer                        = useRef<any>(null);
 
   useEffect(() => {
     const userData = getUser();
@@ -51,6 +54,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Close mobile sidebar whenever the route changes
   useEffect(() => {
     setMobileMenu(false);
+  }, [pathname]);
+
+  // Route-change progress bar
+  useEffect(() => {
+    // Start progress on pathname change
+    setRouteLoading(true);
+    setProgress(10);
+    if (progressTimer.current) clearInterval(progressTimer.current);
+
+    progressTimer.current = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 85) {
+          clearInterval(progressTimer.current);
+          return 85;
+        }
+        return p + Math.random() * 12;
+      });
+    }, 200);
+
+    // Finish after a short delay (page has rendered)
+    const finish = setTimeout(() => {
+      clearInterval(progressTimer.current);
+      setProgress(100);
+      setTimeout(() => {
+        setRouteLoading(false);
+        setProgress(0);
+      }, 300);
+    }, 500);
+
+    return () => {
+      clearInterval(progressTimer.current);
+      clearTimeout(finish);
+    };
   }, [pathname]);
 
   const toggleDarkMode = () => {
@@ -228,6 +264,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <div className="page-content">{children}</div>
       </main>
+
+      {/* ── Route-change progress bar ──────────────────────────────────────── */}
+      {routeLoading && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            height: '3px',
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, #06b6d4, #1e3a8a)',
+            zIndex: 99999,
+            transition: progress === 100 ? 'width .15s ease, opacity .3s ease' : 'width .2s ease',
+            opacity: progress === 100 ? 0 : 1,
+            borderRadius: '0 2px 2px 0',
+            boxShadow: '0 0 10px rgba(6,182,212,.6)',
+          }}
+        />
+      )}
 
       {/* ── Mobile overlay — tap outside to close ────────────────────────── */}
       {isMobileMenuOpen && (
