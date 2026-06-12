@@ -28,6 +28,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "html2pdf.js": "^0.14.0",
     "typescript": "^5"
   }
 }

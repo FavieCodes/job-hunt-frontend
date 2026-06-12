@@ -126,42 +126,49 @@ async function extractTextFromFile(file: File): Promise<{ text: string; error?: 
 }
 
 // ── PDF Download Function ─────────────────────────────────────────────────────
-const downloadPDF = (html: string, fileName: string) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    toast.error('Please allow popups to download PDF');
-    return;
-  }
+const downloadPDF = async (html: string, fileName: string) => {
+  const toastId = toast.loading('Preparing PDF download...');
   
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${fileName} - Resume</title>
-        <meta charset="utf-8">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-            font-size: 10pt;
-            line-height: 1.5;
-            color: #1a1a1a;
-            background: white;
-            padding: 40px;
-          }
-          @media print { body { padding: 0; } }
-          .resume-container { max-width: 800px; margin: 0 auto; background: white; }
-        </style>
-      </head>
-      <body>
-        <div class="resume-container">${html}</div>
-        <script>
-          window.onload = () => { window.print(); setTimeout(() => window.close(), 500); };
-        <\/script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
+  const element = document.createElement('div');
+  element.innerHTML = html;
+  // Apply base styling to match what we see on screen
+  element.style.padding = '30px';
+  element.style.background = 'white';
+  element.style.color = '#1a1a1a';
+  element.style.fontFamily = "'Segoe UI', Arial, sans-serif";
+  
+  // Create a wrapper to enforce A4 width strictly during generation
+  const wrapper = document.createElement('div');
+  wrapper.style.width = '794px'; 
+  wrapper.style.margin = '0 auto';
+  wrapper.appendChild(element);
+
+  // Dynamically load html2pdf.js from CDN
+  if (!(window as any).html2pdf) {
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+    await new Promise((resolve, reject) => {
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Failed to load PDF generator library'));
+    });
+  }
+
+  const opt = {
+    margin:       [0, 0, 0, 0],
+    filename:     `${fileName.replace(/[^a-z0-9]/gi, '_')}-Resume.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+    jsPDF:        { unit: 'px', format: 'a4', orientation: 'portrait' }
+  };
+  
+  try {
+    await (window as any).html2pdf().set(opt).from(wrapper).save();
+    toast.success('Resume downloaded successfully!', { id: toastId });
+  } catch (error) {
+    toast.error('Failed to generate PDF', { id: toastId });
+  }
 };
 
 // ── Main page component ───────────────────────────────────────────────────────
@@ -169,7 +176,7 @@ const downloadPDF = (html: string, fileName: string) => {
 type ActiveTab = 'build' | 'tailor' | 'history';
 
 export default function ResumeBuilderPage() {
-  const router = useRouter(); // ✅ Added missing router initialization
+  const router = useRouter(); 
   const user = getUser();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('build');
@@ -233,11 +240,17 @@ export default function ResumeBuilderPage() {
       toast.success('Resume generated and saved! 🎉');
       fetchHistory();
     } catch (err: any) {
-      if (err?.response?.data?.error === 'daily_limit_reached') {
+      const errCode = err?.response?.data?.error;
+      if (err?.response?.status === 429 || err?.response?.status === 403 || errCode === 'daily_limit_reached' || errCode === 'total_limit_reached') {
+        if (errCode === 'total_limit_reached') {
+          toast.error(err?.response?.data?.message || 'Maximum total limit reached. Please upgrade.');
+        } else {
+          toast.error(err?.response?.data?.message || 'Daily limit reached. Please upgrade.');
+        }
         router.push('/payment?feature=resume');
         return;
       }
-      toast.error(err?.response?.data?.message || err.response?.data?.error || 'Failed to generate resume');
+      toast.error(err?.response?.data?.message || errCode || 'Failed to generate resume');
     } finally { setGenerating(false); }
   };
 
@@ -282,11 +295,17 @@ export default function ResumeBuilderPage() {
       toast.success('Resume tailored and saved! 🎯');
       fetchHistory();
     } catch (err: any) {
-      if (err?.response?.data?.error === 'daily_limit_reached') {
+      const errCode = err?.response?.data?.error;
+      if (err?.response?.status === 429 || err?.response?.status === 403 || errCode === 'daily_limit_reached' || errCode === 'total_limit_reached') {
+        if (errCode === 'total_limit_reached') {
+          toast.error(err?.response?.data?.message || 'Maximum total limit reached. Please upgrade.');
+        } else {
+          toast.error(err?.response?.data?.message || 'Daily limit reached. Please upgrade.');
+        }
         router.push('/payment?feature=resume');
         return;
       }
-      toast.error(err?.response?.data?.message || err.response?.data?.error || 'Failed to tailor resume. Check your AI API keys.');
+      toast.error(err?.response?.data?.message || errCode || 'Failed to tailor resume. Check your AI API keys.');
     } finally { setTailoring(false); }
   };
 
@@ -465,34 +484,36 @@ export default function ResumeBuilderPage() {
       case 6: return (
         <div className="resume-step-content">
           <h2 className="resume-step-title"><i className="fas fa-magic"></i> Generate Your Resume</h2>
-          <div className="resume-generate-summary">
-            <p>Your resume will be generated for:</p>
-            <ul>
-              <li><strong>{form.fullName}</strong> — {form.email}</li>
-              {form.phone    && <li><i className="fas fa-phone"></i> {form.phone}</li>}
-              {form.location && <li><i className="fas fa-map-marker-alt"></i> {form.location}</li>}
-              {form.github   && <li><i className="fab fa-github"></i> {form.github}</li>}
-              {form.linkedin && <li><i className="fab fa-linkedin"></i> {form.linkedin}</li>}
-              <li>{form.experience.filter((e) => e.title).length} work experience(s)</li>
-              <li>{form.projects.filter((p) => p.name).length} project(s)</li>
-              <li>{form.education.filter((e) => e.degree).length} education entry/entries</li>
-              {form.skills && <li>Skills: {form.skills.slice(0, 60)}{form.skills.length > 60 ? '…' : ''}</li>}
-            </ul>
-            {(!form.summary.trim() || form.experience.some((e) => !e.bullets.trim()) || form.projects.some((p) => !p.description.trim())) && (
-              <div className="resume-ai-hint" style={{ marginTop: '1rem' }}>
-                <i className="fas fa-magic"></i>
-                <span>AI will automatically fill in your missing summary, experience bullets, and/or project descriptions.</span>
+          {!generatedHtml ? (
+            <>
+              <div className="resume-generate-summary">
+                <p>Your resume will be generated for:</p>
+                <ul>
+                  <li><strong>{form.fullName}</strong> — {form.email}</li>
+                  {form.phone    && <li><i className="fas fa-phone"></i> {form.phone}</li>}
+                  {form.location && <li><i className="fas fa-map-marker-alt"></i> {form.location}</li>}
+                  {form.github   && <li><i className="fab fa-github"></i> {form.github}</li>}
+                  {form.linkedin && <li><i className="fab fa-linkedin"></i> {form.linkedin}</li>}
+                  <li>{form.experience.filter((e) => e.title).length} work experience(s)</li>
+                  <li>{form.projects.filter((p) => p.name).length} project(s)</li>
+                  <li>{form.education.filter((e) => e.degree).length} education entry/entries</li>
+                  {form.skills && <li>Skills: {form.skills.slice(0, 60)}{form.skills.length > 60 ? '…' : ''}</li>}
+                </ul>
+                {(!form.summary.trim() || form.experience.some((e) => !e.bullets.trim()) || form.projects.some((p) => !p.description.trim())) && (
+                  <div className="resume-ai-hint" style={{ marginTop: '1rem' }}>
+                    <i className="fas fa-magic"></i>
+                    <span>AI will automatically fill in your missing summary, experience bullets, and/or project descriptions.</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <button onClick={handleGenerate} disabled={generating} className="resume-generate-btn">
-            {generating
-              ? <><i className="fas fa-spinner fa-spin"></i> Generating your resume…</>
-              : <><i className="fas fa-magic"></i> Generate &amp; Save Resume</>}
-          </button>
-
-          {generatedHtml && (
+              <button onClick={handleGenerate} disabled={generating} className="resume-generate-btn">
+                {generating
+                  ? <><i className="fas fa-spinner fa-spin"></i> Generating your resume…</>
+                  : <><i className="fas fa-magic"></i> Generate &amp; Save Resume</>}
+              </button>
+            </>
+          ) : (
             <div className="resume-result-section">
               <div className="resume-result-toolbar">
                 <span className="resume-result-label">
@@ -502,8 +523,8 @@ export default function ResumeBuilderPage() {
                   <button onClick={() => downloadPDF(generatedHtml, form.fullName)} className="resume-print-btn">
                     <i className="fas fa-download"></i> Download PDF
                   </button>
-                  <button onClick={handleGenerate} disabled={generating} className="resume-regen-btn">
-                    <i className="fas fa-redo"></i> Regenerate
+                  <button onClick={() => setGeneratedHtml('')} className="resume-regen-btn">
+                    <i className="fas fa-edit"></i> Edit Details
                   </button>
                 </div>
               </div>
@@ -521,82 +542,85 @@ export default function ResumeBuilderPage() {
   const renderTailorTab = () => (
     <div className="resume-step-content">
       <h2 className="resume-step-title"><i className="fas fa-bullseye"></i> Upload &amp; Tailor Resume</h2>
-      <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: 1.7 }}>
-        Already have a resume? Upload it or paste the text, enter the target role, and AI will rewrite your summary and bullet points to match your target role — without changing any facts.
-      </p>
+      {!tailoredHtml ? (
+        <>
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: 1.7 }}>
+            Already have a resume? Upload it or paste the text, enter the target role, and AI will rewrite your summary and bullet points to match your target role — without changing any facts.
+          </p>
 
-      <div className="tailor-step-block">
-        <div className="tailor-step-number">1</div>
-        <div className="tailor-step-body">
-          <h3>Upload your resume <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(or paste below)</span></h3>
-          <div className="tailor-format-info">
-            <i className="fas fa-info-circle"></i>
-            <span>
-              <strong>.txt</strong>, <strong>.pdf</strong>, and <strong>.docx</strong> are supported.{' '}
-              Text will be extracted automatically. For best results, ensure your PDF contains selectable text.
-            </span>
+          <div className="tailor-step-block">
+            <div className="tailor-step-number">1</div>
+            <div className="tailor-step-body">
+              <h3 style={{ marginBottom: '0.4rem' }}>Upload your resume <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(or paste below)</span></h3>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>We support .txt, .pdf, and .docx formats.</p>
+              
+              <div
+                className={`tailor-drop-zone ${tailorFile ? 'has-file' : ''} ${extracting ? 'extracting' : ''}`}
+                onClick={() => !extracting && fileInputRef.current?.click()}
+                style={{ padding: '1.5rem' }}
+              >
+                {extracting ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', color: '#06b6d4' }}></i>
+                    <p style={{ margin: 0, fontWeight: 600, color: '#0c4a6e' }}>Extracting text…</p>
+                  </div>
+                ) : tailorFile && tailorText ? (
+                  <div className="tailor-file-info">
+                    <i className="fas fa-file-check" style={{ color: '#10b981' }}></i>
+                    <span>{tailorFile.name}</span>
+                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
+                      ({tailorText.split(/\s+/).length} words extracted)
+                    </span>
+                    <button className="tailor-remove-file" onClick={(e) => { e.stopPropagation(); setTailorFile(null); setTailorText(''); }}>
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                ) : tailorFile && !tailorText ? (
+                  <div className="tailor-file-info">
+                    <i className="fas fa-file-alt" style={{ color: '#f59e0b' }}></i>
+                    <span>{tailorFile.name} — paste text below</span>
+                    <button className="tailor-remove-file" onClick={(e) => { e.stopPropagation(); setTailorFile(null); setTailorText(''); }}>
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', color: '#06b6d4', marginBottom: '0.5rem', cursor: 'pointer' }}></i>
+                    <p style={{ margin: 0, fontWeight: 600, cursor: 'pointer' }}>Click to browse files</p>
+                  </>
+                )}
+              </div>
+              <input ref={fileInputRef} type="file" accept=".txt,.pdf,.doc,.docx" style={{ display: 'none' }} onChange={handleFileChange} />
+              
+              <div style={{ position: 'relative', marginTop: '1.5rem' }}>
+                <textarea rows={8} value={tailorText} onChange={(e) => setTailorText(e.target.value)} placeholder="...Or paste your full resume text here" style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '0.75rem', border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} />
+                {tailorText && <p style={{ position: 'absolute', bottom: '0.5rem', right: '1rem', margin: 0, fontSize: '0.78rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', padding: '0.1rem 0.4rem', borderRadius: '0.2rem' }}>{tailorText.split(/\s+/).filter(Boolean).length} words ready</p>}
+              </div>
+            </div>
           </div>
-          <div
-            className={`tailor-drop-zone ${tailorFile ? 'has-file' : ''} ${extracting ? 'extracting' : ''}`}
-            onClick={() => !extracting && fileInputRef.current?.click()}
-          >
-            {extracting ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', color: '#06b6d4' }}></i>
-                <p style={{ margin: 0, fontWeight: 600, color: '#0c4a6e' }}>Extracting text…</p>
-              </div>
-            ) : tailorFile && tailorText ? (
-              <div className="tailor-file-info">
-                <i className="fas fa-file-check" style={{ color: '#10b981' }}></i>
-                <span>{tailorFile.name}</span>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
-                  ({tailorText.split(/\s+/).length} words extracted)
-                </span>
-                <button className="tailor-remove-file" onClick={(e) => { e.stopPropagation(); setTailorFile(null); setTailorText(''); }}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-            ) : tailorFile && !tailorText ? (
-              <div className="tailor-file-info">
-                <i className="fas fa-file-alt" style={{ color: '#f59e0b' }}></i>
-                <span>{tailorFile.name} — paste text below</span>
-                <button className="tailor-remove-file" onClick={(e) => { e.stopPropagation(); setTailorFile(null); setTailorText(''); }}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-            ) : (
-              <>
-                <i className="fas fa-cloud-upload-alt" style={{ fontSize: '2rem', color: '#06b6d4', marginBottom: '0.5rem' }}></i>
-                <p style={{ margin: 0, fontWeight: 600 }}>Click to upload your resume</p>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>.txt, .pdf, .docx supported</p>
-              </>
-            )}
+
+          <div className="tailor-step-block">
+            <div className="tailor-step-number">2</div>
+            <div className="tailor-step-body">
+              <h3>What role are you applying for?</h3>
+              <input value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. Senior Product Manager, Backend Engineer, Data Analyst…" style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem', border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: '0.9rem', boxSizing: 'border-box' }} />
+            </div>
           </div>
-          <input ref={fileInputRef} type="file" accept=".txt,.pdf,.doc,.docx" style={{ display: 'none' }} onChange={handleFileChange} />
-          <p style={{ textAlign: 'center', margin: '1rem 0 0.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>— or paste your resume text directly —</p>
-          <textarea rows={10} value={tailorText} onChange={(e) => setTailorText(e.target.value)} placeholder="Paste your full resume text here…" style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem', border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', boxSizing: 'border-box' }} />
-          {tailorText && <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', textAlign: 'right' }}>{tailorText.split(/\s+/).filter(Boolean).length} words ready</p>}
-        </div>
-      </div>
 
-      <div className="tailor-step-block">
-        <div className="tailor-step-number">2</div>
-        <div className="tailor-step-body">
-          <h3>What role are you applying for?</h3>
-          <input value={targetRole} onChange={(e) => setTargetRole(e.target.value)} placeholder="e.g. Senior Product Manager, Backend Engineer, Data Analyst…" style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '0.75rem', border: '1.5px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'inherit', fontSize: '0.9rem', boxSizing: 'border-box' }} />
-        </div>
-      </div>
-
-      <button onClick={handleTailor} disabled={tailoring || extracting || !tailorText.trim() || !targetRole.trim()} className="resume-generate-btn" style={{ marginTop: '0.5rem' }}>
-        {tailoring ? <><i className="fas fa-spinner fa-spin"></i> Tailoring your resume…</> : <><i className="fas fa-bullseye"></i> Tailor Resume with AI</>}
-      </button>
-
-      {tailoredHtml && (
-        <div className="resume-result-section" style={{ marginTop: '1.5rem' }}>
+          <button onClick={handleTailor} disabled={tailoring || extracting || !tailorText.trim() || !targetRole.trim()} className="resume-generate-btn" style={{ marginTop: '0.5rem' }}>
+            {tailoring ? <><i className="fas fa-spinner fa-spin"></i> Tailoring your resume…</> : <><i className="fas fa-bullseye"></i> Tailor Resume with AI</>}
+          </button>
+        </>
+      ) : (
+        <div className="resume-result-section" style={{ marginTop: '0.5rem' }}>
           <div className="resume-result-toolbar">
             <span className="resume-result-label"><i className="fas fa-check-circle" style={{ color: '#10b981' }}></i> Tailored resume ready and saved!</span>
             <div className="resume-result-actions">
               <button onClick={() => downloadPDF(tailoredHtml, targetRole)} className="resume-print-btn"><i className="fas fa-download"></i> Download PDF</button>
+              <button onClick={() => {
+                setTailoredHtml('');
+                setTargetRole('');
+              }} className="resume-regen-btn"><i className="fas fa-plus"></i> Tailor Another</button>
             </div>
           </div>
           <div className="resume-preview" dangerouslySetInnerHTML={{ __html: tailoredHtml }} />

@@ -8,6 +8,7 @@ export default function LandingPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -19,7 +20,6 @@ export default function LandingPage() {
     
     checkAuth();
     
-    // Redirect if already logged in
     if (isAuthenticated()) {
       router.push('/dashboard');
     }
@@ -53,28 +53,30 @@ export default function LandingPage() {
             <span>Job<span>Hunt</span></span>
           </div>
           
-          <div className="nav-links">
-            <button onClick={() => scrollToSection('features')} className="nav-link">Features</button>
-            <button onClick={() => scrollToSection('how-it-works')} className="nav-link">How It Works</button>
-            <button onClick={() => scrollToSection('stats')} className="nav-link">Stats</button>
-            <button onClick={() => scrollToSection('contact')} className="nav-link">Contact</button>
+          <div className={`nav-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+            <div className="nav-links">
+              <button onClick={() => { scrollToSection('features'); setIsMobileMenuOpen(false); }} className="nav-link">Features</button>
+              <button onClick={() => { scrollToSection('how-it-works'); setIsMobileMenuOpen(false); }} className="nav-link">How It Works</button>
+              <button onClick={() => { scrollToSection('stats'); setIsMobileMenuOpen(false); }} className="nav-link">Stats</button>
+              <button onClick={() => { scrollToSection('contact'); setIsMobileMenuOpen(false); }} className="nav-link">Contact</button>
+            </div>
+            
+            <div className="nav-buttons">
+              {!isLoggedIn ? (
+                <>
+                  <Link href="/login" className="btn-login">Sign In</Link>
+                  <Link href="/signup" className="btn-signup">Get Started</Link>
+                </>
+              ) : (
+                <Link href="/dashboard" className="btn-dashboard">
+                  <i className="fas fa-tachometer-alt"></i> Dashboard
+                </Link>
+              )}
+            </div>
           </div>
           
-          <div className="nav-buttons">
-            {!isLoggedIn ? (
-              <>
-                <Link href="/login" className="btn-login">Sign In</Link>
-                <Link href="/signup" className="btn-signup">Get Started</Link>
-              </>
-            ) : (
-              <Link href="/dashboard" className="btn-dashboard">
-                <i className="fas fa-tachometer-alt"></i> Dashboard
-              </Link>
-            )}
-          </div>
-          
-          <button className="mobile-menu-btn" id="mobileMenuBtn">
-            <i className="fas fa-bars"></i>
+          <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <i className={`fas ${isMobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
           </button>
         </div>
       </nav>
@@ -97,7 +99,8 @@ export default function LandingPage() {
             </p>
             <div className="hero-buttons">
               <Link href="/signup" className="btn-primary-hero">
-                Get Started Free
+                Get Started
+
                 <i className="fas fa-arrow-right"></i>
               </Link>
               <button onClick={() => scrollToSection('features')} className="btn-secondary-hero">
@@ -415,6 +418,14 @@ export default function LandingPage() {
         .logo span:first-child { color: #1e3a8a; }
         .logo span:last-child { color: #06b6d4; }
 
+        .nav-menu {
+          display: flex;
+          align-items: center;
+          gap: 2rem;
+          flex: 1;
+          justify-content: flex-end;
+        }
+
         .nav-links {
           display: flex;
           gap: 2rem;
@@ -427,6 +438,7 @@ export default function LandingPage() {
           font-size: 1rem;
           cursor: pointer;
           transition: color 0.3s;
+          font-weight: 500;
         }
 
         .nav-link:hover {
@@ -436,6 +448,16 @@ export default function LandingPage() {
         .nav-buttons {
           display: flex;
           gap: 1rem;
+          margin-left: 1rem;
+        }
+
+        .mobile-menu-btn {
+          display: none;
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          color: #1e3a8a;
+          cursor: pointer;
         }
 
         .btn-login {
@@ -522,40 +544,51 @@ export default function LandingPage() {
         }
 
         .btn-primary-hero {
-          padding: 0.875rem 2rem;
+          padding: 1rem 2.5rem;
           background: #06b6d4;
           color: white;
           text-decoration: none;
-          border-radius: 0.5rem;
-          font-weight: 600;
+          border-radius: 3rem;
+          font-weight: 700;
+          font-size: 1.1rem;
           display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
-          transition: all 0.3s;
+          justify-content: center;
+          gap: 0.75rem;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 10px rgba(6, 182, 212, 0.2);
+          border: 2px solid #06b6d4;
         }
 
         .btn-primary-hero:hover {
           background: #0891b2;
-          transform: translateY(-2px);
+          border-color: #0891b2;
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 8px 20px rgba(6, 182, 212, 0.3);
         }
 
         .btn-secondary-hero {
-          padding: 0.875rem 2rem;
-          background: transparent;
-          color: #06b6d4;
-          border: 2px solid #06b6d4;
-          border-radius: 0.5rem;
-          font-weight: 600;
+          padding: 1rem 2.5rem;
+          background: rgba(255, 255, 255, 0.9);
+          color: #1e3a8a;
+          border: 2px solid #e2e8f0;
+          border-radius: 3rem;
+          font-weight: 700;
+          font-size: 1.1rem;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
-          transition: all 0.3s;
+          justify-content: center;
+          gap: 0.75rem;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
         }
 
         .btn-secondary-hero:hover {
-          background: #06b6d4;
-          color: white;
+          border-color: #cbd5e1;
+          background: white;
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
         }
 
         .hero-stats {
@@ -625,8 +658,12 @@ export default function LandingPage() {
         }
 
         .section-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           text-align: center;
           margin-bottom: 4rem;
+          gap: 0.75rem;
         }
 
         .section-tag {
@@ -637,18 +674,20 @@ export default function LandingPage() {
           border-radius: 2rem;
           font-size: 0.875rem;
           font-weight: 600;
-          margin-bottom: 1rem;
         }
 
         .section-header h2 {
           font-size: 2.5rem;
           color: #1e3a8a;
-          margin-bottom: 1rem;
+          margin: 0;
+          line-height: 1.2;
         }
 
         .section-header p {
           color: #64748b;
           font-size: 1.125rem;
+          margin: 0;
+          max-width: 600px;
         }
 
         .features-grid {
@@ -968,9 +1007,77 @@ export default function LandingPage() {
 
         /* Mobile Responsive */
         @media (max-width: 768px) {
+          .mobile-menu-btn {
+            display: block;
+          }
+          
+          .nav-menu {
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 2rem;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            gap: 1.5rem;
+            clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+            transition: all 0.3s ease-in-out;
+            opacity: 0;
+            visibility: hidden;
+            align-items: stretch;
+            border-top: 1px solid rgba(0,0,0,0.05);
+          }
+          
+          .nav-menu.open {
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+            opacity: 1;
+            visibility: visible;
+          }
+          
+          .nav-links {
+            flex-direction: column;
+            gap: 1.25rem;
+            align-items: stretch;
+          }
+          
+          .nav-link {
+            text-align: center;
+            font-size: 1.1rem;
+            padding: 0.5rem;
+          }
+          
+          .nav-buttons {
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            margin-left: 0;
+            padding-top: 1rem;
+            border-top: 1px solid #f1f5f9;
+          }
+          
+          .btn-login, .btn-signup, .btn-dashboard {
+            width: 100%;
+            text-align: center;
+            justify-content: center;
+            display: flex;
+          }
+
           .hero-container {
             grid-template-columns: 1fr;
             text-align: center;
+          }
+          
+          .hero-buttons {
+            flex-direction: column;
+            width: 100%;
+            gap: 1rem;
+            padding: 0 1rem;
+          }
+          
+          .btn-primary-hero, .btn-secondary-hero {
+            width: 100%;
           }
           
           .hero-stats {

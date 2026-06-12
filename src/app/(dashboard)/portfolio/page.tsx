@@ -260,11 +260,17 @@ export default function PortfolioPage() {
       toast.success('Portfolio generated!');
       fetchHistory();
     } catch (err: any) {
-      if (err?.response?.status === 429 || err?.response?.data?.error === 'daily_limit_reached') {
+      const errCode = err?.response?.data?.error;
+      if (err?.response?.status === 429 || err?.response?.status === 403 || errCode === 'daily_limit_reached' || errCode === 'total_limit_reached') {
+        if (errCode === 'total_limit_reached') {
+          toast.error(err?.response?.data?.message || 'Maximum total limit reached. Please upgrade.');
+        } else {
+          toast.error(err?.response?.data?.message || 'Daily limit reached. Please upgrade.');
+        }
         router.push('/payment?feature=portfolio');
         return;
       }
-      toast.error(err?.response?.data?.message || err?.response?.data?.error || 'Failed to generate portfolio');
+      toast.error(err?.response?.data?.message || errCode || 'Failed to generate portfolio');
     } finally {
       setGenerating(false);
     }

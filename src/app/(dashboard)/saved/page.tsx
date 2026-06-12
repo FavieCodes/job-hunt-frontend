@@ -525,7 +525,7 @@ export default function SavedItemsPage() {
           text-transform: capitalize;
         }
         .sc-meta {
-          display: flex; flex-wrap: wrap; gap: .6rem;
+          display: flex; flex-wrap: wrap; gap: .6rem; align-items: center;
           font-size: .78rem; color: var(--color-text-muted);
         }
         .sc-meta i { margin-right: .25rem; color: #06b6d4; }
@@ -813,11 +813,11 @@ function JobCard({ item, onRemove, onApply }: {
           <h3 className="sc-title">{item.title}</h3>
           <p className="sc-company">{item.company || 'Company'}</p>
         </div>
+      </div>
+      <div className="sc-meta">
         <span className="sc-type" style={{ background: ts.bg, color: ts.text }}>
           {item.job_type || 'Full-time'}
         </span>
-      </div>
-      <div className="sc-meta">
         <span><i className="fas fa-map-marker-alt"></i> {item.city || item.state || item.country || 'Remote'}</span>
         {item.salary && <span><i className="fas fa-dollar-sign"></i> {item.salary}</span>}
         <span><i className="fas fa-clock"></i> Saved {new Date(item.saved_at).toLocaleDateString()}</span>
@@ -872,13 +872,13 @@ function ScholarshipCard({ item, onRemove, onApply }: {
           <h3 className="sc-title">{item.title}</h3>
           <p className="sc-company">{item.provider || 'Scholarship Provider'}</p>
         </div>
+      </div>
+      <div className="sc-meta">
         {item.amount && (
           <span className="sc-type" style={{ background: '#f0fdf4', color: '#166534' }}>
             {item.amount}
           </span>
         )}
-      </div>
-      <div className="sc-meta">
         {item.country && <span><i className="fas fa-globe"></i> {item.country}</span>}
         {item.field && <span><i className="fas fa-book"></i> {item.field}</span>}
         {item.deadline && (
