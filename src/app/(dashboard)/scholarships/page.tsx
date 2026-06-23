@@ -250,6 +250,17 @@ export default function ScholarshipsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleDeleteScholarship = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this scholarship?')) return;
+    try {
+      await adminScholarshipsAPI.deleteScholarship(id);
+      toast.success('Scholarship deleted successfully');
+      fetchScholarships();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to delete scholarship');
+    }
+  };
+
   const handleSave = async (scholarshipId: string) => {
     if (savingId === scholarshipId) return;
     setSavingId(scholarshipId);
@@ -398,6 +409,9 @@ export default function ScholarshipsPage() {
                       <span className="engagement-badge saved-badge">
                         <i className="fas fa-bookmark"></i> {scholarship.saved_count ?? 0} saved
                       </span>
+                      <button className="delete-btn" onClick={() => handleDeleteScholarship(scholarship.id)} title="Delete scholarship">
+                        <i className="fas fa-trash"></i>
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -577,6 +591,23 @@ export default function ScholarshipsPage() {
         .engagement-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .85rem; border-radius: 2rem; font-size: .8rem; font-weight: 600; }
         .applied-badge-stats { background: #dbeafe; color: #1e40af; }
         .saved-badge { background: #ede9fe; color: #6d28d9; }
+        .delete-btn {
+          background: #fee2e2;
+          color: #ef4444;
+          border: none;
+          border-radius: 0.5rem;
+          padding: 0.4rem 0.6rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: auto;
+        }
+        .delete-btn:hover {
+          background: #fecaca;
+          transform: scale(1.05);
+        }
 
         .pagination-wrapper {
           display: flex; flex-direction: column; align-items: center; gap: 0.75rem;

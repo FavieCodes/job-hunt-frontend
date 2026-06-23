@@ -269,6 +269,17 @@ export default function JobsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleDeleteJob = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this job?')) return;
+    try {
+      await adminJobsAPI.deleteJob(id);
+      toast.success('Job deleted successfully');
+      fetchJobs();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to delete job');
+    }
+  };
+
   const getTypeColor = (type: string) => ({
     'full-time': '#088e61ff', 'part-time': '#a27117ff',
     'remote': '#18a5beff', 'contract': '#3d0eabff', 'internship': '#ef4444',
@@ -397,6 +408,9 @@ export default function JobsPage() {
                     <span className="engagement-badge saved-badge">
                       <i className="fas fa-bookmark"></i> {job.saved_count ?? 0} saved
                     </span>
+                    <button className="delete-btn" onClick={() => handleDeleteJob(job.id)} title="Delete job">
+                      <i className="fas fa-trash"></i>
+                    </button>
                   </div>
                 ) : (
                   <>
@@ -558,6 +572,23 @@ export default function JobsPage() {
         .engagement-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .85rem; border-radius:2rem; font-size:.8rem; font-weight:600; }
         .applied-badge { background:#dbeafe; color:#1e40af; }
         .saved-badge   { background:#ede9fe; color:#6d28d9; }
+        .delete-btn {
+          background: #fee2e2;
+          color: #ef4444;
+          border: none;
+          border-radius: 0.5rem;
+          padding: 0.4rem 0.6rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: auto;
+        }
+        .delete-btn:hover {
+          background: #fecaca;
+          transform: scale(1.05);
+        }
 
         /* ── Pagination ──────────────────────────────────────────────────── */
         .pagination-wrapper {
