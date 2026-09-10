@@ -96,16 +96,25 @@ a:hover { text-decoration: underline; }
 
 .auth-panel-left .brand {
   font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff !important;
   position: absolute;
   top: 48px;
   left: 48px;
-  z-index: 1;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
-.auth-panel-left .brand span { opacity: 0.7; font-weight: 300; }
+.auth-panel-left .brand span {
+  color: #60a5fa !important;
+  font-weight: 800;
+  opacity: 1;
+}
 
 .auth-panel-left .tagline {
   position: relative;
