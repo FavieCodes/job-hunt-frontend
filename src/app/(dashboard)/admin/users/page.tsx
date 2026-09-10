@@ -215,7 +215,7 @@ export default function AdminUsersPage() {
                       <div className="action-buttons">
                         {u.role === 'user' ? (
                           <button
-                            className="action-btn promote-btn"
+                            className="usr-btn promote-btn"
                             onClick={() => handleRoleChange(u.id, 'admin')}
                             disabled={updatingId === u.id}
                             title="Promote to Admin"
@@ -226,7 +226,7 @@ export default function AdminUsersPage() {
                           </button>
                         ) : (
                           <button
-                            className="action-btn demote-btn"
+                            className="usr-btn demote-btn"
                             onClick={() => handleRoleChange(u.id, 'user')}
                             disabled={updatingId === u.id}
                             title="Demote to User"
@@ -237,7 +237,7 @@ export default function AdminUsersPage() {
                           </button>
                         )}
                         <button
-                          className="action-btn delete-btn"
+                          className="usr-btn delete-btn"
                           onClick={() => handleDelete(u.id, u.username)}
                           disabled={deletingId === u.id}
                           title="Delete User"
@@ -401,11 +401,11 @@ export default function AdminUsersPage() {
           gap: .5rem;
           align-items: center;
         }
-        .action-btn {
+        .usr-btn {
           display: inline-flex;
           align-items: center;
-          gap: .3rem;
-          padding: .35rem .75rem;
+          gap: .35rem;
+          padding: .4rem .75rem;
           border-radius: .5rem;
           font-size: .78rem;
           font-weight: 600;
@@ -413,8 +413,9 @@ export default function AdminUsersPage() {
           border: 1.5px solid transparent;
           transition: all .2s;
           white-space: nowrap;
+          height: 34px;
         }
-        .action-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .usr-btn:disabled { opacity: .5; cursor: not-allowed; }
         .promote-btn { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
         .promote-btn:hover:not(:disabled) { background: #10b981; color: white; }
         .demote-btn  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }

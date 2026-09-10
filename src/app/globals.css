@@ -1378,7 +1378,7 @@ a:hover { text-decoration: underline; }
 }
 
 .action-btn {
-  width: 32px;
+  min-width: 32px;
   height: 32px;
   border: none;
   border-radius: 0.5rem;

@@ -5,7 +5,7 @@ import { getUser } from '@/lib/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
-const SCHOLARSHIPS_PER_PAGE = 10;
+const SCHOLARSHIPS_PER_PAGE = 12;
 
 const emptyForm: AddScholarshipForm = {
   title: '', provider: '', description: '', country: '',

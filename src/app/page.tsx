@@ -522,6 +522,11 @@ export default function LandingPage() {
           min-height: 90vh;
           display: flex;
           align-items: center;
+          position: relative;
+          background-image: linear-gradient(135deg, rgba(240, 249, 255, 0.90) 0%, rgba(224, 242, 254, 0.93) 100%), url('/hero-bg.png');
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
         }
 
         .hero-container {
