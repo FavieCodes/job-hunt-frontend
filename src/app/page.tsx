@@ -46,8 +46,7 @@ export default function LandingPage() {
 
   const scrollToSection = (sectionId: string) => {
     setIsMobileMenuOpen(false);
-    // Wait for the mobile menu to close before scrolling so the
-    // section lands in the right position.
+  
     setTimeout(() => {
       const section = document.getElementById(sectionId);
       if (section) {
@@ -334,18 +333,19 @@ export default function LandingPage() {
                 </div>
                 <div className="contact-item">
                   <i className="fas fa-phone"></i>
-                  <span>+1 (555) 123-4567</span>
+                  <a href="tel:+2349035354010" style={{ color: 'inherit', textDecoration: 'none' }}>+234 9035354010</a>
                 </div>
                 <div className="contact-item">
                   <i className="fas fa-map-marker-alt"></i>
-                  <span>123 Career Street, Silicon Valley, CA</span>
+                  <span>143 Udo Udoma Avenue, Akwa-Ibom Uyo,</span>
                 </div>
               </div>
               <div className="social-links">
-                <a href="#" className="social-link"><i className="fab fa-facebook-f"></i></a>
-                <a href="#" className="social-link"><i className="fab fa-twitter"></i></a>
-                <a href="#" className="social-link"><i className="fab fa-linkedin-in"></i></a>
-                <a href="#" className="social-link"><i className="fab fa-instagram"></i></a>
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-link" title="Facebook"><i className="fab fa-facebook-f"></i></a>
+                <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="social-link" title="Twitter"><i className="fab fa-twitter"></i></a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn"><i className="fab fa-linkedin-in"></i></a>
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram"><i className="fab fa-instagram"></i></a>
+                <a href="https://wa.me/2349035354010" target="_blank" rel="noopener noreferrer" className="social-link" title="WhatsApp"><i className="fab fa-whatsapp"></i></a>
               </div>
             </div>
             
