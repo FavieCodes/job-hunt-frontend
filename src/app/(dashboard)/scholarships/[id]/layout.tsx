@@ -13,10 +13,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!res.ok) throw new Error('not found');
     const s   = await res.json();
 
-    const title = `${s.title}${s.provider ? ` — ${s.provider}` : ''} | ZenJobHunt`;
+    const title = `${s.title}${s.provider ? ` — ${s.provider}` : ''} | ZenithJobs`;
     const desc  =
       (s.description?.slice(0, 155)) ||
-      `Apply for the ${s.title} scholarship${s.provider ? ` by ${s.provider}` : ''} on ZenJobHunt. ` +
+      `Apply for the ${s.title} scholarship${s.provider ? ` by ${s.provider}` : ''} on ZenithJobs. ` +
       `${s.deadline ? 'Deadline: ' + s.deadline + '.' : ''} ${s.amount || ''}`.trim();
 
     return {
@@ -33,8 +33,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   } catch {
     return {
-      title: 'Scholarship | ZenJobHunt',
-      description: 'View and apply for this scholarship on ZenJobHunt.',
+      title: 'Scholarship | ZenithJobs',
+      description: 'View and apply for this scholarship on ZenithJobs.',
     };
   }
 }

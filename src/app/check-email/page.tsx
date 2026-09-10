@@ -68,7 +68,7 @@ export default function CheckEmailPage() {
           </div>
           <div className="step">
             <span className="step-num">2</span>
-            <span>Find the email from <strong>JobHunt</strong></span>
+            <span>Find the email from <strong>ZenithJobs</strong></span>
           </div>
           <div className="step">
             <span className="step-num">3</span>

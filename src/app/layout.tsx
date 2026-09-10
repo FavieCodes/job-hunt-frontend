@@ -5,12 +5,12 @@ import GoogleProvider from '@/components/auth/GoogleProvider';
 import StyledJsxRegistry from './registry';
 
 // ─── Site-wide constants ──────────────────────────────────────────────────────
-const SITE_NAME    = 'ZenJobHunt';
+const SITE_NAME    = 'ZenithJobs';
 const SITE_URL     = process.env.NEXT_PUBLIC_SITE_URL || 'https://zen-job-hunt.vercel.app';
-const SITE_TITLE   = 'ZenJobHunt — Find Remote Jobs & Scholarships in Nigeria & Worldwide';
+const SITE_TITLE   = 'ZenithJobs — Find Remote Jobs, Job Search & Scholarships';
 const SITE_DESC    =
-  'Search 2,000+ remote jobs and scholarships from Nigeria, Africa, and worldwide. ' +
-  'Apply to tech, design, marketing, and more — updated daily with verified listings.';
+  'Search 2,000+ remote jobs, jobhunt opportunities, and fully funded scholarships from Nigeria, Africa, and worldwide. ' +
+  'Apply to tech, design, marketing, and more — updated daily with verified listings on ZenithJobs.';
 const OG_IMAGE     = `${SITE_URL}/og-image.png`;
 
 // ─── Root metadata ────────────────────────────────────────────────────────────
@@ -23,17 +23,18 @@ export const metadata: Metadata = {
   },
   description: SITE_DESC,
   keywords: [
-    'jobs in Nigeria', 'remote jobs Nigeria', 'Nigerian jobs', 'Africa jobs',
-    'scholarships Nigeria', 'scholarships for Nigerians', 'African scholarships',
+    'jobs', 'job search', 'jobhunt', 'job hunt', 'zenithjobs', 'zenith jobs',
+    'find jobs', 'remote jobs', 'jobs in Nigeria', 'remote jobs Nigeria', 'Nigerian jobs', 'Africa jobs',
+    'scholarships', 'scholarships Nigeria', 'scholarships for Nigerians', 'African scholarships',
     'remote work Africa', 'tech jobs Nigeria', 'software developer jobs Nigeria',
     'job board Nigeria', 'online jobs Nigeria', 'work from home Nigeria',
     'scholarships 2025', 'scholarships 2026', 'fully funded scholarships',
-    'international scholarships Africa', 'job hunt', 'career opportunities Africa',
+    'international scholarships Africa', 'career opportunities Africa', 'entry level jobs',
   ],
 
-  authors: [{ name: 'ZenJobHunt', url: SITE_URL }],
-  creator:  'ZenJobHunt',
-  publisher: 'ZenJobHunt',
+  authors: [{ name: 'ZenithJobs', url: SITE_URL }],
+  creator:  'ZenithJobs',
+  publisher: 'ZenithJobs',
 
   robots: {
     index:          true,
@@ -71,8 +72,8 @@ export const metadata: Metadata = {
     title:       SITE_TITLE,
     description: SITE_DESC,
     images:      [OG_IMAGE],
-    creator:     '@zenjobhunt',
-    site:        '@zenjobhunt',
+    creator:     '@zenithjobs',
+    site:        '@zenithjobs',
   },
 
   // Canonical + alternates

@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import ResetPasswordForm from '@/components/auth/ResetPasswordForm';
 
-export const metadata = { title: 'New Password — JobHunt' };
+export const metadata = { title: 'New Password — ZenithJobs' };
 
 export default function ResetPasswordPage() {
   return (

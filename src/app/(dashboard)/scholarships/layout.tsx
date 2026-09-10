@@ -17,14 +17,14 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: `${SITE_URL}/scholarships` },
   openGraph: {
-    title:       'Scholarships for Nigerians & Africans | ZenJobHunt',
+    title:       'Scholarships for Nigerians & Africans | ZenithJobs',
     description: '500+ fully funded scholarships for Nigerians and Africans. Updated daily.',
     url:         `${SITE_URL}/scholarships`,
     type:        'website',
   },
   twitter: {
     card:        'summary',
-    title:       'Scholarships for Nigerians & Africans | ZenJobHunt',
+    title:       'Scholarships for Nigerians & Africans | ZenithJobs',
     description: '500+ fully funded scholarships. Browse deadlines and apply directly.',
   },
 };

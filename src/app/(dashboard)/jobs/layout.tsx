@@ -15,14 +15,14 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: `${SITE_URL}/jobs` },
   openGraph: {
-    title:       'Browse 2,000+ Remote Jobs | ZenJobHunt',
+    title:       'Browse 2,000+ Remote Jobs | ZenithJobs',
     description: 'Find remote and on-site jobs in Nigeria, Africa and worldwide. Updated daily.',
     url:         `${SITE_URL}/jobs`,
     type:        'website',
   },
   twitter: {
     card:        'summary',
-    title:       'Browse 2,000+ Remote Jobs | ZenJobHunt',
+    title:       'Browse 2,000+ Remote Jobs | ZenithJobs',
     description: 'Find remote and on-site jobs in Nigeria, Africa and worldwide.',
   },
 };

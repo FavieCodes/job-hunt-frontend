@@ -1,6 +1,6 @@
 import LoginForm from '@/components/auth/LoginForm';
 
-export const metadata = { title: 'Sign In — JobHunt' };
+export const metadata = { title: 'Sign In — ZenithJobs' };
 
 export default function LoginPage() {
   return (

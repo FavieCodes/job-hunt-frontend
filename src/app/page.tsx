@@ -62,7 +62,7 @@ export default function LandingPage() {
         <div className="nav-container">
           <div className="logo">
             <i className="fas fa-briefcase"></i>
-            <span>Job<span>Hunt</span></span>
+            <span>Zenith<span>Jobs</span></span>
           </div>
           
           <div
@@ -238,7 +238,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="section-header">
             <span className="section-tag">Simple Process</span>
-            <h2>How JobHunt Works</h2>
+            <h2>How ZenithJobs Works</h2>
             <p>Get started in just a few simple steps</p>
           </div>
           
@@ -310,7 +310,7 @@ export default function LandingPage() {
         <div className="container">
           <div className="cta-content">
             <h2>Ready to Find Your Next Opportunity?</h2>
-            <p>Join thousands of successful job seekers and scholars who found their path through JobHunt</p>
+            <p>Join thousands of successful job seekers and scholars who found their path through ZenithJobs</p>
             <Link href="/signup" className="btn-cta">
               Start Your Journey Today
               <i className="fas fa-arrow-right"></i>
@@ -329,7 +329,7 @@ export default function LandingPage() {
               <div className="contact-details">
                 <div className="contact-item">
                   <i className="fas fa-envelope"></i>
-                  <span>support@jobhunt.com</span>
+                  <span>support@zenithjobs.com</span>
                 </div>
                 <div className="contact-item">
                   <i className="fas fa-phone"></i>
@@ -366,7 +366,7 @@ export default function LandingPage() {
             <div className="footer-brand">
               <div className="logo">
                 <i className="fas fa-briefcase"></i>
-                <span>Job<span>Hunt</span></span>
+                <span>Zenith<span>Jobs</span></span>
               </div>
               <p>Your trusted partner in career growth and educational opportunities worldwide.</p>
             </div>
@@ -395,7 +395,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2026 JobHunt. All rights reserved.</p>
+            <p>&copy; 2026 ZenithJobs. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -13,10 +13,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!res.ok) throw new Error('not found');
     const job  = await res.json();
 
-    const title = `${job.title}${job.company ? ` at ${job.company}` : ''} — ZenJobHunt`;
+    const title = `${job.title}${job.company ? ` at ${job.company}` : ''} — ZenithJobs`;
     const desc  =
       (job.description?.slice(0, 155)) ||
-      `Apply for ${job.title}${job.company ? ` at ${job.company}` : ''} on ZenJobHunt. ` +
+      `Apply for ${job.title}${job.company ? ` at ${job.company}` : ''} on ZenithJobs. ` +
       `${job.job_type ? job.job_type + ' position.' : ''} ${job.country || ''}`.trim();
 
     return {
@@ -33,8 +33,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   } catch {
     return {
-      title: 'Job Listing | ZenJobHunt',
-      description: 'View and apply for this job on ZenJobHunt.',
+      title: 'Job Listing | ZenithJobs',
+      description: 'View and apply for this job on ZenithJobs.',
     };
   }
 }

@@ -1,6 +1,6 @@
 import SignupForm from '@/components/auth/SignupForm';
 
-export const metadata = { title: 'Create Account — JobHunt' };
+export const metadata = { title: 'Create Account — ZenithJobs' };
 
 export default function SignupPage() {
   return (
