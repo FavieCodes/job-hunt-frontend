@@ -80,7 +80,7 @@ a:hover { text-decoration: underline; }
   background-image: radial-gradient(ellipse at 30% 20%, #3b82f6 0%, #1d4ed8 50%, #1e3a8a 100%);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   padding: 48px;
   color: white;
   position: relative;
@@ -99,7 +99,9 @@ a:hover { text-decoration: underline; }
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  position: relative;
+  position: absolute;
+  top: 48px;
+  left: 48px;
   z-index: 1;
 }
 
