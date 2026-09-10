@@ -435,10 +435,19 @@ export default function LandingPage() {
         }
 
         .logo {
+          font-family: var(--font-display);
           font-size: 1.5rem;
           font-weight: 700;
           color: #06b6d4;
           cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.65rem;
+        }
+
+        .logo i {
+          font-size: 1.35rem;
+          color: #06b6d4;
         }
 
         .logo span:first-child { color: #1e3a8a; }
@@ -576,28 +585,43 @@ export default function LandingPage() {
           margin-bottom: 2rem;
         }
 
+        @keyframes hero-blink {
+          0%, 100% {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.6), 0 0 30px rgba(37, 99, 235, 0.4);
+            border-color: #38bdf8;
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 28px rgba(6, 182, 212, 0.95), 0 0 45px rgba(37, 99, 235, 0.8);
+            border-color: #ffffff;
+            transform: scale(1.03);
+          }
+        }
+
         .btn-primary-hero {
           padding: 1rem 2.5rem;
-          background: #06b6d4;
-          color: white;
+          background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);
+          color: #ffffff !important;
           text-decoration: none;
           border-radius: 3rem;
-          font-weight: 700;
-          font-size: 1.1rem;
+          font-weight: 800;
+          font-size: 1.15rem;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 0.75rem;
           transition: all 0.3s ease;
-          box-shadow: 0 4px 10px rgba(6, 182, 212, 0.2);
-          border: 2px solid #06b6d4;
+          border: 2px solid #38bdf8;
+          animation: hero-blink 2.2s ease-in-out infinite;
+          letter-spacing: 0.02em;
         }
 
         .btn-primary-hero:hover {
-          background: #0891b2;
-          border-color: #0891b2;
-          transform: translateY(-3px) scale(1.02);
-          box-shadow: 0 8px 20px rgba(6, 182, 212, 0.3);
+          background: linear-gradient(135deg, #0891b2 0%, #1d4ed8 100%);
+          border-color: #ffffff;
+          transform: translateY(-3px) scale(1.05);
+          animation-play-state: paused;
+          box-shadow: 0 12px 30px rgba(6, 182, 212, 0.6);
         }
 
         .btn-secondary-hero {

@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="auth-panel-left">
         <Link href="/" className="brand" style={{ textDecoration: 'none' }}>
           <i className="fas fa-briefcase"></i>
-          Zenith<span>Jobs</span>
+          <span>Zenith<span>Jobs</span></span>
         </Link>
         <div className="tagline">
           <h2>Your next opportunity starts here.</h2>
